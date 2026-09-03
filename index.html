@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>BixBoard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BixBoard">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="format-detection" content="telephone=no">
+<style>
+/* iOS 12 / Safari 2018 — bez :has(), bez flex gap, bez zmiennych w calc-ach dziwnych */
+* { -webkit-box-sizing: border-box; box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: #0e1526;
+  color: #e8edf7;
+  font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overflow: hidden;
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+.board {
+  display: -ms-grid; display: grid;
+  grid-template-columns: 37% 1fr;
+  grid-template-rows: auto 1fr;
+  grid-gap: 18px;
+  height: 100%;
+  padding: 20px;
+}
+.card {
+  background: #16203a;
+  border-radius: 18px;
+  padding: 18px 20px;
+  overflow: hidden;
+  position: relative;
+}
+.label {
+  font-size: 13px; letter-spacing: 2px; text-transform: uppercase;
+  color: #8fa0c0; margin: 0 0 8px 0; font-weight: 600;
+}
+
+/* --- zegar --- */
+.clock { grid-column: 1; grid-row: 1; text-align: left; }
+body.no-feed .clock {
+  grid-row: 1 / span 2;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
+  -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+}
+body.no-feed .clock .label { position: absolute; top: 18px; left: 20px; }
+#time {
+  font-size: 108px; line-height: 0.95; font-weight: 200;
+  letter-spacing: -3px; margin: 4px 0 2px 0;
+  font-variant-numeric: tabular-nums;
+}
+#sec { font-size: 34px; color: #f2b45a; font-weight: 300; }
+#date { font-size: 22px; color: #b9c6de; margin-top: 10px; }
+#hello { font-size: 17px; color: #8fa0c0; margin-top: 14px; }
+#sun { font-size: 15px; color: #7b8db0; margin-top: 22px; }
+
+/* --- pogoda --- */
+.weather { grid-column: 2; grid-row: 1; }
+.wx-now { display: block; }
+.wx-main { font-size: 0; }
+.wx-icon { font-size: 62px; line-height: 1; display: inline-block; vertical-align: middle; }
+.wx-temp {
+  font-size: 66px; font-weight: 200; letter-spacing: -2px;
+  display: inline-block; vertical-align: middle; margin-left: 16px;
+}
+.wx-txt { display: inline-block; vertical-align: middle; margin-left: 20px; }
+.wx-desc { font-size: 21px; color: #e8edf7; }
+.wx-sub { font-size: 15px; color: #8fa0c0; margin-top: 4px; }
+.fc { margin-top: 16px; border-top: 1px solid #223055; padding-top: 12px; font-size: 0; }
+.fc-day {
+  display: inline-block; width: 33.3%; text-align: center; vertical-align: top;
+}
+.fc-name { font-size: 14px; color: #8fa0c0; text-transform: capitalize; }
+.fc-ico { font-size: 28px; margin: 4px 0; }
+.fc-t { font-size: 17px; }
+.fc-t span { color: #7b8db0; }
+
+/* --- przepis --- */
+.recipe { grid-column: 2; grid-row: 2; padding: 0; }
+.rc-img {
+  position: absolute; top: 0; left: 0; width: 46%; height: 100%;
+  background-size: cover; background-position: center;
+  background-color: #101a30;
+}
+.rc-body { margin-left: 46%; padding: 18px 22px; height: 100%; }
+.rc-name { font-size: 27px; font-weight: 500; line-height: 1.15; margin: 6px 0 10px 0; }
+.rc-meta { font-size: 15px; color: #8fa0c0; }
+.rc-tag {
+  display: inline-block; background: #23304f; color: #cfd9ee;
+  border-radius: 20px; padding: 4px 12px; font-size: 13px; margin: 10px 8px 0 0;
+}
+.rc-hint { position: absolute; right: 18px; bottom: 14px; font-size: 12px; color: #5e6f92; }
+
+/* --- lewy dolny: feed --- */
+.feed { grid-column: 1; grid-row: 2; overflow: hidden; }
+body.no-feed .feed { display: none; }
+.sec + .sec { margin-top: 16px; }
+.row { font-size: 16px; margin: 6px 0; color: #dbe3f2; }
+.row b { color: #f2b45a; font-weight: 500; display: inline-block; min-width: 62px; }
+.sensors .row { color: #b9c6de; }
+.sensors .row i { font-style: normal; color: #e8edf7; float: right; }
+.task { font-size: 16px; margin: 6px 0; color: #dbe3f2; }
+.task:before { content: "\25CB"; color: #f2b45a; margin-right: 9px; font-size: 13px; }
+.note { font-size: 15px; color: #b9c6de; line-height: 1.4; margin-top: 8px; }
+
+.err { color: #6d7c9c; font-size: 15px; }
+#stale {
+  position: absolute; top: 14px; right: 18px; font-size: 11px;
+  color: #7b8db0; letter-spacing: 1px; display: none;
+}
+</style>
+</head>
+<body class="no-feed">
+
+<div class="board">
+
+  <div class="card clock">
+    <p class="label">BixBoard</p>
+    <div id="time">--:--</div>
+    <div id="date">&nbsp;</div>
+    <div id="hello">&nbsp;</div>
+    <div id="sun">&nbsp;</div>
+  </div>
+
+  <div class="card weather">
+    <p class="label">Pogoda — <span id="wx-city">Bibice</span></p>
+    <div id="stale">DANE SPRZED CHWILI</div>
+    <div class="wx-now">
+      <div class="wx-main">
+        <span class="wx-icon" id="wx-icon">&#8230;</span>
+        <span class="wx-temp" id="wx-temp">--&deg;</span>
+        <span class="wx-txt">
+          <div class="wx-desc" id="wx-desc">wczytuję…</div>
+          <div class="wx-sub" id="wx-sub">&nbsp;</div>
+        </span>
+      </div>
+      <div class="fc" id="fc"></div>
+    </div>
+  </div>
+
+  <div class="card feed" id="feed"></div>
+
+  <div class="card recipe" id="recipe">
+    <div class="rc-img" id="rc-img"></div>
+    <div class="rc-body">
+      <p class="label">Przepis dnia</p>
+      <div class="rc-name" id="rc-name">wczytuję…</div>
+      <div class="rc-meta" id="rc-meta">&nbsp;</div>
+      <div id="rc-tags"></div>
+    </div>
+    <div class="rc-hint">dotknij, by wylosować inny</div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================
+   BixBoard v2 — iOS 12 safe (bez ?., ??, flex gap, :has())
+   ========================================================= */
+var CONFIG = {
+  name: "Bartek",
+  city: "Bibice",
+  lat: 50.1046,
+  lon: 19.9741,
+  feedUrl: null,          /* podmienić na URL bixboard.json, gdy powstanie generator */
+  weatherEveryMin: 15,
+  recipeEveryMin: 90,
+  feedEveryMin: 10,
+  reloadEveryH: 8         /* twardy reload — stare Safari lubi puchnąć */
+};
+
+function $(id) { return document.getElementById(id); }
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+/* ---------- zegar ---------- */
+var DNI = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+var DNI_KR = ["nd","pn","wt","śr","cz","pt","sb"];
+var MIES = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca",
+            "sierpnia","września","października","listopada","grudnia"];
+
+function tick() {
+  var d = new Date();
+  $("time").innerHTML = pad(d.getHours()) + ":" + pad(d.getMinutes()) +
+                        '<span id="sec">' + pad(d.getSeconds()) + '</span>';
+  var dn = DNI[d.getDay()];
+  $("date").textContent = dn.charAt(0).toUpperCase() + dn.slice(1) +
+                          ", " + d.getDate() + " " + MIES[d.getMonth()];
+  var h = d.getHours(), g;
+  if (h < 5) { g = "Dobrej nocy"; }
+  else if (h < 11) { g = "Dzień dobry"; }
+  else if (h < 18) { g = "Miłego dnia"; }
+  else { g = "Dobry wieczór"; }
+  $("hello").textContent = g + ", " + CONFIG.name + ".";
+}
+
+/* ---------- pogoda ---------- */
+var WMO = {
+  0:  ["☀️", "bezchmurnie"],
+  1:  ["\u{1F324}️", "przeważnie słonecznie"],
+  2:  ["⛅", "częściowe zachmurzenie"],
+  3:  ["☁️", "pochmurno"],
+  45: ["\u{1F32B}️", "mgła"],
+  48: ["\u{1F32B}️", "mgła osadzająca szron"],
+  51: ["\u{1F327}️", "mżawka"],
+  53: ["\u{1F327}️", "mżawka"],
+  55: ["\u{1F327}️", "gęsta mżawka"],
+  56: ["\u{1F328}️", "marznąca mżawka"],
+  57: ["\u{1F328}️", "marznąca mżawka"],
+  61: ["\u{1F327}️", "słaby deszcz"],
+  63: ["\u{1F327}️", "deszcz"],
+  65: ["\u{1F327}️", "ulewa"],
+  66: ["\u{1F328}️", "marznący deszcz"],
+  67: ["\u{1F328}️", "marznący deszcz"],
+  71: ["\u{1F328}️", "słaby śnieg"],
+  73: ["\u{1F328}️", "śnieg"],
+  75: ["❄️", "śnieżyca"],
+  77: ["❄️", "krupa śnieżna"],
+  80: ["\u{1F326}️", "przelotny deszcz"],
+  81: ["\u{1F326}️", "przelotny deszcz"],
+  82: ["⛈️", "gwałtowne opady"],
+  85: ["\u{1F328}️", "przelotny śnieg"],
+  86: ["\u{1F328}️", "przelotny śnieg"],
+  95: ["⛈️", "burza"],
+  96: ["⛈️", "burza z gradem"],
+  99: ["⛈️", "burza z gradem"]
+};
+function wmo(code) {
+  var w = WMO[code];
+  if (w) { return w; }
+  return ["\u{1F321}️", "—"];
+}
+
+function getJSON(url, cb) {
+  var done = false;
+  var timer = setTimeout(function () {
+    if (!done) { done = true; cb(null); }
+  }, 15000);
+  fetch(url, { cache: "no-store" })
+    .then(function (r) {
+      if (!r.ok) { throw new Error("http " + r.status); }
+      return r.json();
+    })
+    .then(function (j) {
+      if (done) { return; }
+      done = true; clearTimeout(timer); cb(j);
+    })
+    ["catch"](function () {
+      if (done) { return; }
+      done = true; clearTimeout(timer); cb(null);
+    });
+}
+
+var lastWeatherOk = 0;
+
+function loadWeather() {
+  var u = "https://api.open-meteo.com/v1/forecast" +
+          "?latitude=" + CONFIG.lat + "&longitude=" + CONFIG.lon +
+          "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m" +
+          "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset" +
+          "&timezone=Europe%2FWarsaw&forecast_days=4";
+  getJSON(u, function (j) {
+    if (!j || !j.current) {
+      $("stale").style.display = lastWeatherOk ? "block" : "none";
+      if (!lastWeatherOk) { $("wx-desc").textContent = "brak połączenia"; }
+      return;
+    }
+    lastWeatherOk = Date.now();
+    $("stale").style.display = "none";
+
+    var c = j.current;
+    var w = wmo(c.weather_code);
+    $("wx-icon").textContent = w[0];
+    $("wx-temp").innerHTML = Math.round(c.temperature_2m) + "&deg;";
+    $("wx-desc").textContent = w[1];
+    $("wx-sub").textContent = "odczuwalna " + Math.round(c.apparent_temperature) +
+                              "° · wilgotność " + c.relative_humidity_2m +
+                              "% · wiatr " + Math.round(c.wind_speed_10m) + " km/h";
+
+    var d = j.daily, html = "", i;
+    for (i = 1; i < d.time.length && i <= 3; i++) {
+      var dt = new Date(d.time[i] + "T12:00:00");
+      var dw = wmo(d.weather_code[i]);
+      html += '<div class="fc-day">' +
+                '<div class="fc-name">' + DNI_KR[dt.getDay()] + "</div>" +
+                '<div class="fc-ico">' + dw[0] + "</div>" +
+                '<div class="fc-t">' + Math.round(d.temperature_2m_max[i]) +
+                  "° <span>" + Math.round(d.temperature_2m_min[i]) + "°</span></div>" +
+              "</div>";
+    }
+    $("fc").innerHTML = html;
+
+    if (d.sunrise && d.sunset) {
+      $("sun").textContent = "↑ " + d.sunrise[0].slice(11) + "   ↓ " + d.sunset[0].slice(11);
+    }
+  });
+}
+
+/* ---------- przepis ---------- */
+function loadRecipe() {
+  getJSON("https://www.themealdb.com/api/json/v1/1/random.php", function (j) {
+    if (!j || !j.meals || !j.meals[0]) { return; }
+    var m = j.meals[0];
+    $("rc-name").textContent = m.strMeal;
+    var parts = [];
+    if (m.strArea && m.strArea !== "Unknown") { parts.push(m.strArea); }
+    if (m.strCategory) { parts.push(m.strCategory); }
+    $("rc-meta").textContent = parts.join(" · ");
+    if (m.strMealThumb) {
+      $("rc-img").style.backgroundImage = 'url("' + m.strMealThumb + '")';
+    }
+    var tags = "", i;
+    if (m.strTags) {
+      var t = m.strTags.split(",");
+      for (i = 0; i < t.length && i < 4; i++) {
+        if (t[i]) { tags += '<span class="rc-tag">' + t[i] + "</span>"; }
+      }
+    }
+    $("rc-tags").innerHTML = tags;
+  });
+}
+
+/* ---------- feed prywatny (opcjonalny) ---------- */
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderFeed(f) {
+  if (!f) { document.body.className = "no-feed"; return; }
+  document.body.className = "";
+  var h = "", i;
+
+  if (f.name) { CONFIG.name = f.name; }
+  if (f.weather && f.weather.lat && f.weather.lon) {
+    CONFIG.lat = f.weather.lat; CONFIG.lon = f.weather.lon;
+    if (f.weather.city) { CONFIG.city = f.weather.city; $("wx-city").textContent = f.weather.city; }
+  }
+
+  if (f.agenda && f.agenda.length) {
+    h += '<div class="sec"><p class="label">Dziś w kalendarzu</p>';
+    for (i = 0; i < f.agenda.length && i < 5; i++) {
+      h += '<div class="row"><b>' + esc(f.agenda[i].time) + "</b>" + esc(f.agenda[i].title) + "</div>";
+    }
+    h += "</div>";
+  }
+  if (f.sensors && f.sensors.length) {
+    h += '<div class="sec sensors"><p class="label">Dom</p>';
+    for (i = 0; i < f.sensors.length && i < 6; i++) {
+      h += '<div class="row">' + esc(f.sensors[i].label) + "<i>" + esc(f.sensors[i].value) + "</i></div>";
+    }
+    h += "</div>";
+  }
+  if (f.tasks && f.tasks.length) {
+    h += '<div class="sec"><p class="label">Na dziś</p>';
+    for (i = 0; i < f.tasks.length && i < 6; i++) {
+      h += '<div class="task">' + esc(f.tasks[i]) + "</div>";
+    }
+    h += "</div>";
+  }
+  if (f.note) {
+    h += '<div class="sec"><p class="label">Notka</p><div class="note">' + esc(f.note) + "</div></div>";
+  }
+
+  $("feed").innerHTML = h;
+  if (!h) { document.body.className = "no-feed"; }
+}
+
+function loadFeed() {
+  if (!CONFIG.feedUrl) { return; }
+  getJSON(CONFIG.feedUrl + (CONFIG.feedUrl.indexOf("?") < 0 ? "?" : "&") + "t=" + Date.now(),
+    function (j) { renderFeed(j); });
+}
+
+/* ---------- start ---------- */
+tick();
+setInterval(tick, 1000);
+
+loadWeather();
+setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
+
+loadRecipe();
+setInterval(loadRecipe, CONFIG.recipeEveryMin * 60000);
+
+loadFeed();
+setInterval(loadFeed, CONFIG.feedEveryMin * 60000);
+
+$("recipe").addEventListener("click", function () { loadRecipe(); }, false);
+
+setTimeout(function () { location.reload(); }, CONFIG.reloadEveryH * 3600000);
+
+/* nie pozwól iOS-owi bujać stroną */
+document.addEventListener("touchmove", function (e) { e.preventDefault(); }, false);
+</script>
+</body>
+</html>
