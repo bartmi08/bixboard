@@ -83,12 +83,25 @@ body.no-agenda .wx { grid-column: 1 / span 2; }
 .fc-t span { color: #94a2bd; }
 
 /* agenda */
-.agenda { grid-column: 2; grid-row: 1; }
+.agenda { grid-column: 2; grid-row: 1 / span 2; }
 body.no-agenda .agenda { display: none; }
 .ev { margin: 0 0 9px 0; }
 .ev-time { font-size: 19px; font-weight: 500; color: #f2b45a; }
 .ev-title { font-size: 15px; color: #eef1f8; line-height: 1.25; }
 .ev-empty { font-size: 15px; color: #98a5bf; }
+
+/* dojazd */
+.commute { grid-column: 1; }
+body.no-agenda .commute { grid-column: 1 / span 2; }
+body.no-commute .commute { display: none; }
+.cm-row { font-size: 0; margin-top: 2px; }
+.cm-ico { font-size: 29px; display: inline-block; vertical-align: middle; }
+.cm-min {
+  font-size: 44px; font-weight: 200; letter-spacing: -1px;
+  display: inline-block; vertical-align: middle; margin-left: 12px;
+}
+.cm-unit { font-size: 18px; color: #c3cde1; display: inline-block; vertical-align: middle; margin-left: 6px; }
+.cm-sub { font-size: 13px; color: #a9b6ce; margin-top: 5px; }
 
 /* kafle czujników */
 .tiles { grid-column: 1 / span 2; font-size: 0; }
@@ -120,7 +133,7 @@ body.no-sensors .tiles { display: none; }
 }
 </style>
 </head>
-<body class="no-agenda no-sensors">
+<body class="no-agenda no-sensors no-commute">
 
 <div id="bg"></div>
 <div id="shade"></div>
@@ -151,6 +164,16 @@ body.no-sensors .tiles { display: none; }
     <div class="card agenda" id="agenda-card">
       <p class="label">Dziś</p>
       <div id="agenda-list"></div>
+    </div>
+
+    <div class="card commute" id="commute">
+      <p class="label" id="cm-label">Dojazd</p>
+      <div class="cm-row">
+        <span class="cm-ico">🚗</span>
+        <span class="cm-min" id="cm-min">--</span>
+        <span class="cm-unit">min</span>
+      </div>
+      <div class="cm-sub" id="cm-sub">&nbsp;</div>
     </div>
 
     <div class="card tiles" id="tiles"></div>
@@ -336,6 +359,20 @@ function renderFeed(f) {
     CONFIG.photoUrl = f.photo.url;
     $("photo-cap").textContent = f.photo.caption ? f.photo.caption : "";
     loadBg();
+  }
+
+  if (f.commute && f.commute.minutes) {
+    var cm = f.commute;
+    $("cm-label").textContent = cm.label ? cm.label : "Dojazd";
+    $("cm-min").textContent = cm.minutes;
+    var sub = [];
+    if (cm.to) { sub.push("do: " + cm.to); }
+    if (cm.distance) { sub.push(cm.distance); }
+    if (cm.route) { sub.push(cm.route); }
+    $("cm-sub").textContent = sub.join(" · ");
+    setFlag("no-commute", false);
+  } else {
+    setFlag("no-commute", true);
   }
 
   var i, h;
