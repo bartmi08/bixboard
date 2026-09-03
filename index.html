@@ -11,7 +11,8 @@
 <meta name="format-detection" content="telephone=no">
 <style>
 /* iOS 12 / Safari 2018 — bez :has(), bez gap we flexie, bez ?. i ??
-   Układ pionowy: iPad Air 1 na ścianie, 768 x 1024 CSS px. */
+   Pion 768 x 1024. Proporcje wzorowane na DAKboard: zdjęcie zajmuje górne ~34%,
+   karty są mocno przezroczyste, rogi prawie proste, typografia drobna. */
 * { -webkit-box-sizing: border-box; box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0; width: 100%; height: 100%;
@@ -22,115 +23,148 @@ html, body {
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 
-/* --- tło: zdjęcie dnia + przyciemnienie ku dołowi --- */
+/* --- tło --- */
 #bg {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background-position: center; background-size: cover; background-color: #10131c;
-  -webkit-transition: opacity 1.2s ease; transition: opacity 1.2s ease;
-  opacity: 0;
+  -webkit-transition: opacity 1.2s ease; transition: opacity 1.2s ease; opacity: 0;
 }
 #bg.on { opacity: 1; }
 #shade {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: -webkit-linear-gradient(top, rgba(8,10,18,0.15) 0%, rgba(8,10,18,0.45) 34%, rgba(8,10,18,0.80) 62%, rgba(8,10,18,0.92) 100%);
-  background: linear-gradient(to bottom, rgba(8,10,18,0.15) 0%, rgba(8,10,18,0.45) 34%, rgba(8,10,18,0.80) 62%, rgba(8,10,18,0.92) 100%);
+  background: -webkit-linear-gradient(top, rgba(8,10,18,0.10) 0%, rgba(8,10,18,0.28) 30%, rgba(8,10,18,0.55) 46%, rgba(8,10,18,0.66) 100%);
+  background: linear-gradient(to bottom, rgba(8,10,18,0.10) 0%, rgba(8,10,18,0.28) 30%, rgba(8,10,18,0.55) 46%, rgba(8,10,18,0.66) 100%);
 }
-.wrap { position: relative; height: 100%; padding: 16px; }
+.wrap { position: relative; height: 100%; padding: 14px; }
 
-/* --- góra: zegar na zdjęciu --- */
-.top { text-align: center; padding: 34px 0 26px 0; text-shadow: 0 2px 18px rgba(0,0,0,0.55); }
-#time {
-  font-size: 118px; line-height: 1; font-weight: 200; letter-spacing: -4px;
-  font-variant-numeric: tabular-nums;
-}
-#date { font-size: 25px; font-weight: 300; margin-top: 6px; color: #f3f5fb; }
-#hello { font-size: 16px; color: #c9d2e6; margin-top: 10px; }
-#photo-cap { font-size: 12px; color: #9fabc4; margin-top: 6px; }
+/* --- góra: zegar na zdjęciu (~34% wysokości) --- */
+.top { text-align: center; padding: 26px 0 0 0; height: 34%; text-shadow: 0 2px 16px rgba(0,0,0,0.5); }
+#time { font-size: 72px; line-height: 1; font-weight: 200; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+#date { font-size: 18px; font-weight: 300; margin-top: 4px; color: #f3f5fb; }
+#hello { font-size: 12px; color: #cbd4e6; margin-top: 7px; }
+#photo-cap { font-size: 10px; color: #a7b2c8; margin-top: 4px; }
 
-/* --- karty --- */
+/* --- siatka kart --- */
 .cards {
-  position: absolute; left: 16px; right: 16px; bottom: 16px;
+  position: absolute; left: 14px; right: 14px; bottom: 14px;
   display: -ms-grid; display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-gap: 13px;
+  grid-gap: 10px;
 }
+.col > .card, .col > .tiles { margin-bottom: 10px; }
+.col > .card:last-child, .col > .tiles:last-child { margin-bottom: 0; }
+body.no-agenda .col-right:empty { display: none; }
+
+/* wspólny wygląd karty — mocno przezroczysty, rogi prawie proste */
 .card {
-  background: rgba(12,16,30,0.60);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border-radius: 16px; padding: 14px 16px; overflow: hidden; position: relative;
+  background: rgba(14,18,32,0.30);
+  -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+  border-radius: 5px; padding: 9px 11px; overflow: hidden; position: relative;
 }
 .label {
-  font-size: 11px; letter-spacing: 2.2px; text-transform: uppercase;
-  color: #e0a86a; margin: 0 0 8px 0; font-weight: 600;
+  font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase;
+  color: #e8977a; margin: 0 0 6px 0; font-weight: 600;
 }
 
 /* pogoda */
-.wx { grid-column: 1; }
-body.no-agenda .wx { grid-column: 1 / span 2; }
 .wx-row { font-size: 0; }
-.wx-temp {
-  font-size: 54px; font-weight: 200; letter-spacing: -2px;
-  display: inline-block; vertical-align: middle;
-}
-.wx-ico { font-size: 40px; display: inline-block; vertical-align: middle; margin-left: 12px; }
-.wx-desc { font-size: 17px; color: #f0f3fa; margin-top: 6px; }
-.wx-sub { font-size: 13px; color: #a9b6ce; margin-top: 3px; }
-.fc { margin-top: 11px; border-top: 1px solid rgba(255,255,255,0.13); padding-top: 9px; font-size: 0; }
+.wx-temp { font-size: 34px; font-weight: 200; letter-spacing: -1px; display: inline-block; vertical-align: middle; }
+.wx-ico { font-size: 26px; display: inline-block; vertical-align: middle; margin-left: 9px; }
+.wx-desc { font-size: 13px; color: #f0f3fa; margin-top: 3px; }
+.wx-sub { font-size: 10px; color: #b3bdd2; margin-top: 2px; }
+.fc { margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.10); padding-top: 6px; font-size: 0; }
 .fc-day { display: inline-block; width: 33.3%; text-align: center; vertical-align: top; }
-.fc-name { font-size: 12px; color: #a9b6ce; }
-.fc-ico { font-size: 22px; margin: 2px 0; }
-.fc-t { font-size: 15px; }
-.fc-t span { color: #94a2bd; }
-
-/* agenda */
-.agenda { grid-column: 2; grid-row: 1 / span 2; }
-body.no-agenda .agenda { display: none; }
-.ev { margin: 0 0 9px 0; }
-.ev-time { font-size: 19px; font-weight: 500; color: #f2b45a; }
-.ev-title { font-size: 15px; color: #eef1f8; line-height: 1.25; }
-.ev-empty { font-size: 15px; color: #98a5bf; }
+.fc-name { font-size: 10px; color: #b3bdd2; }
+.fc-ico { font-size: 16px; margin: 1px 0; }
+.fc-t { font-size: 12px; }
+.fc-t span { color: #97a4be; }
 
 /* dojazd */
-.commute { grid-column: 1; }
-body.no-agenda .commute { grid-column: 1 / span 2; }
 body.no-commute .commute { display: none; }
-.cm-row { font-size: 0; margin-top: 2px; }
-.cm-ico { font-size: 29px; display: inline-block; vertical-align: middle; }
-.cm-min {
-  font-size: 44px; font-weight: 200; letter-spacing: -1px;
-  display: inline-block; vertical-align: middle; margin-left: 12px;
-}
-.cm-unit { font-size: 18px; color: #c3cde1; display: inline-block; vertical-align: middle; margin-left: 6px; }
-.cm-sub { font-size: 13px; color: #a9b6ce; margin-top: 5px; }
+.cm-row { font-size: 0; }
+.cm-ico { font-size: 20px; display: inline-block; vertical-align: middle; }
+.cm-min { font-size: 28px; font-weight: 200; display: inline-block; vertical-align: middle; margin-left: 9px; }
+.cm-unit { font-size: 13px; color: #c8d1e2; display: inline-block; vertical-align: middle; margin-left: 4px; }
+.cm-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 
-/* kafle czujników */
-.tiles { grid-column: 1 / span 2; font-size: 0; }
+/* agenda */
+body.no-agenda .agenda { display: none; }
+.ev {
+  background: rgba(255,255,255,0.07); border-left: 2px solid rgba(255,255,255,0.28);
+  border-radius: 3px; padding: 6px 8px; margin-bottom: 6px;
+}
+.ev:last-child { margin-bottom: 0; }
+.ev-time { font-size: 14px; font-weight: 600; color: #fff; }
+.ev-title { font-size: 12px; color: #e7ecf6; line-height: 1.25; margin-top: 1px; }
+
+/* kafle czujników — osobne mini-karty, trzy w rzędzie */
+.tiles { font-size: 0; margin: 0 -3px; }
 body.no-sensors .tiles { display: none; }
-.tile {
-  display: inline-block; width: 33.33%; vertical-align: top; text-align: center;
-  padding: 5px 6px 9px 6px;
+.tile { display: inline-block; width: 33.333%; vertical-align: top; padding: 0 3px 6px 3px; }
+.tile-in {
+  background: rgba(14,18,32,0.30);
+  -webkit-backdrop-filter: blur(9px); backdrop-filter: blur(9px);
+  border-radius: 5px; padding: 7px 4px; text-align: center;
 }
-.tile-label {
-  font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: #a9b6ce;
-}
-.tile-val { font-size: 25px; font-weight: 300; margin-top: 2px; }
+.tile-label { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: #e8977a; }
+.tile-val { font-size: 17px; font-weight: 300; margin-top: 2px; }
 
-/* przepis */
+/* przepis — pas na całą szerokość, jak "Latest News" we wzorcu */
 .recipe { grid-column: 1 / span 2; }
 .rc-thumb {
-  width: 84px; height: 84px; border-radius: 12px; background-size: cover;
+  width: 52px; height: 52px; border-radius: 4px; background-size: cover;
   background-position: center; background-color: #1a2135;
   display: inline-block; vertical-align: middle;
 }
-.rc-txt { display: inline-block; vertical-align: middle; margin-left: 14px; width: 76%; }
-.rc-name { font-size: 21px; font-weight: 500; line-height: 1.15; }
-.rc-meta { font-size: 14px; color: #a9b6ce; margin-top: 4px; }
-.rc-hint { position: absolute; right: 14px; bottom: 10px; font-size: 11px; color: #6f7d99; }
+.rc-txt { display: inline-block; vertical-align: middle; margin-left: 10px; width: 80%; }
+.rc-name { font-size: 15px; font-weight: 500; line-height: 1.15; }
+.rc-meta { font-size: 11px; color: #b3bdd2; margin-top: 2px; }
+.rc-hint { position: absolute; right: 10px; bottom: 7px; font-size: 9px; color: #7d8aa4; }
 
-#stale {
-  position: absolute; top: 12px; right: 14px; font-size: 10px;
-  letter-spacing: 1px; color: #9aa7c1; display: none;
+/* --- pełnoekranowy przepis (po dotknięciu karty) --- */
+#modal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(8,10,18,0.94);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  display: none; z-index: 50;
 }
+body.modal-on #modal { display: block; }
+#m-hero {
+  height: 250px; background-size: cover; background-position: center;
+  background-color: #1a2135; position: relative;
+}
+#m-hero-shade {
+  position: absolute; left: 0; bottom: 0; width: 100%; height: 130px;
+  background: -webkit-linear-gradient(top, rgba(8,10,18,0) 0%, rgba(8,10,18,0.92) 100%);
+  background: linear-gradient(to bottom, rgba(8,10,18,0) 0%, rgba(8,10,18,0.92) 100%);
+}
+#m-title {
+  position: absolute; left: 22px; right: 22px; bottom: 30px;
+  font-size: 30px; font-weight: 500; line-height: 1.1; text-shadow: 0 2px 14px rgba(0,0,0,0.6);
+}
+#m-meta { position: absolute; left: 22px; bottom: 11px; font-size: 13px; color: #c6cfe2; }
+#m-body {
+  position: absolute; top: 250px; left: 0; right: 0; bottom: 62px;
+  padding: 16px 22px 8px 22px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.m-cols { display: -ms-grid; display: grid; grid-template-columns: 34% 1fr; grid-gap: 22px; }
+.m-h {
+  font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase;
+  color: #e8977a; font-weight: 600; margin: 0 0 8px 0;
+}
+.m-ing { font-size: 13px; color: #e7ecf6; line-height: 1.45; margin-bottom: 5px; }
+.m-ing b { color: #fff; font-weight: 600; }
+.m-step { font-size: 14px; color: #dfe6f3; line-height: 1.5; margin-bottom: 10px; }
+#m-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 62px; padding: 11px 22px; text-align: right; }
+.m-btn {
+  display: inline-block; font-size: 14px; color: #fff; border-radius: 5px;
+  padding: 10px 20px; margin-left: 10px;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.18);
+}
+.m-btn.pri { background: rgba(232,151,122,0.22); border-color: rgba(232,151,122,0.45); }
+#m-hint { float: left; font-size: 11px; color: #8f9bb3; padding-top: 14px; }
+
+#stale { position: absolute; top: 9px; right: 11px; font-size: 9px; letter-spacing: 1px; color: #a7b2c8; display: none; }
 </style>
 </head>
 <body class="no-agenda no-sensors no-commute">
@@ -149,34 +183,40 @@ body.no-sensors .tiles { display: none; }
 
   <div class="cards">
 
-    <div class="card wx">
-      <p class="label">Pogoda — <span id="wx-city">Bibice</span></p>
-      <div id="stale">DANE SPRZED CHWILI</div>
-      <div class="wx-row">
-        <span class="wx-temp" id="wx-temp">--&deg;</span>
-        <span class="wx-ico" id="wx-ico">&#8230;</span>
+    <div class="col col-left" id="col-left">
+
+      <div class="card wx">
+        <p class="label">Pogoda — <span id="wx-city">Bibice</span></p>
+        <div id="stale">DANE SPRZED CHWILI</div>
+        <div class="wx-row">
+          <span class="wx-temp" id="wx-temp">--&deg;</span>
+          <span class="wx-ico" id="wx-ico">&#8230;</span>
+        </div>
+        <div class="wx-desc" id="wx-desc">wczytuję…</div>
+        <div class="wx-sub" id="wx-sub">&nbsp;</div>
+        <div class="fc" id="fc"></div>
       </div>
-      <div class="wx-desc" id="wx-desc">wczytuję…</div>
-      <div class="wx-sub" id="wx-sub">&nbsp;</div>
-      <div class="fc" id="fc"></div>
-    </div>
 
-    <div class="card agenda" id="agenda-card">
-      <p class="label">Dziś</p>
-      <div id="agenda-list"></div>
-    </div>
-
-    <div class="card commute" id="commute">
-      <p class="label" id="cm-label">Dojazd</p>
-      <div class="cm-row">
-        <span class="cm-ico">🚗</span>
-        <span class="cm-min" id="cm-min">--</span>
-        <span class="cm-unit">min</span>
+      <div class="card commute" id="commute">
+        <p class="label" id="cm-label">Dojazd</p>
+        <div class="cm-row">
+          <span class="cm-ico">&#x1F697;</span>
+          <span class="cm-min" id="cm-min">--</span>
+          <span class="cm-unit">min</span>
+        </div>
+        <div class="cm-sub" id="cm-sub">&nbsp;</div>
       </div>
-      <div class="cm-sub" id="cm-sub">&nbsp;</div>
+
+      <div class="tiles" id="tiles"></div>
+
     </div>
 
-    <div class="card tiles" id="tiles"></div>
+    <div class="col col-right" id="col-right">
+      <div class="card agenda" id="agenda-card">
+        <p class="label">Dziś</p>
+        <div id="agenda-list"></div>
+      </div>
+    </div>
 
     <div class="card recipe" id="recipe">
       <p class="label">Przepis dnia</p>
@@ -191,9 +231,34 @@ body.no-sensors .tiles { display: none; }
   </div>
 </div>
 
+<div id="modal">
+  <div id="m-hero">
+    <div id="m-hero-shade"></div>
+    <div id="m-title"></div>
+    <div id="m-meta"></div>
+  </div>
+  <div id="m-body">
+    <div class="m-cols">
+      <div>
+        <p class="m-h">Składniki</p>
+        <div id="m-ings"></div>
+      </div>
+      <div>
+        <p class="m-h">Przygotowanie</p>
+        <div id="m-steps"></div>
+      </div>
+    </div>
+  </div>
+  <div id="m-bar">
+    <span id="m-hint">zamknie się samo po 2 min</span>
+    <span class="m-btn" id="m-another">Losuj inny</span>
+    <span class="m-btn pri" id="m-close">Zamknij</span>
+  </div>
+</div>
+
 <script>
 /* =========================================================
-   BixBoard v3 — układ pionowy (iPad na ścianie), iOS 12 safe
+   BixBoard v4 — pion, proporcje wg DAKboard, iOS 12 safe
    ========================================================= */
 var CONFIG = {
   name: "Bartek",
@@ -322,10 +387,15 @@ function loadWeather() {
 }
 
 /* ---------- przepis ---------- */
-function loadRecipe() {
+var currentMeal = null;
+var modalTimer = null;
+
+function loadRecipe(thenOpen) {
   getJSON("https://www.themealdb.com/api/json/v1/1/random.php", function (j) {
     if (!j || !j.meals || !j.meals[0]) { return; }
     var m = j.meals[0];
+    currentMeal = m;
+    if (thenOpen) { fillModal(m); setFlag("modal-on", true); }
     $("rc-name").textContent = m.strMeal;
     var parts = [];
     if (m.strArea && m.strArea !== "Unknown") { parts.push(m.strArea); }
@@ -333,6 +403,49 @@ function loadRecipe() {
     $("rc-meta").textContent = parts.join(" · ");
     if (m.strMealThumb) { $("rc-thumb").style.backgroundImage = 'url("' + m.strMealThumb + '")'; }
   });
+}
+
+/* Pełny przepis przychodzi już w tym samym zapytaniu, co karta (random.php zwraca
+   składniki, miary i instrukcje) — otwarcie nakładki nie dociąga niczego z sieci. */
+function fillModal(m) {
+  $("m-title").textContent = m.strMeal;
+  var meta = [];
+  if (m.strArea && m.strArea !== "Unknown") { meta.push(m.strArea); }
+  if (m.strCategory) { meta.push(m.strCategory); }
+  $("m-meta").textContent = meta.join(" · ");
+  $("m-hero").style.backgroundImage = m.strMealThumb ? 'url("' + m.strMealThumb + '")' : "";
+
+  var h = "", i, ing, mea;
+  for (i = 1; i <= 20; i++) {
+    ing = m["strIngredient" + i];
+    mea = m["strMeasure" + i];
+    if (!ing || !ing.replace(/\s/g, "")) { continue; }
+    h += '<div class="m-ing"><b>' + esc(ing) + "</b>" +
+         (mea && mea.replace(/\s/g, "") ? " — " + esc(mea) : "") + "</div>";
+  }
+  $("m-ings").innerHTML = h;
+
+  var txt = (m.strInstructions || "").replace(/\r/g, "");
+  var parts = txt.split(/\n+/), j2;
+  h = "";
+  for (j2 = 0; j2 < parts.length; j2++) {
+    if (parts[j2].replace(/\s/g, "")) { h += '<div class="m-step">' + esc(parts[j2]) + "</div>"; }
+  }
+  $("m-steps").innerHTML = h;
+  $("m-body").scrollTop = 0;
+}
+
+function openModal() {
+  if (!currentMeal) { loadRecipe(true); return; }
+  fillModal(currentMeal);
+  setFlag("modal-on", true);
+  if (modalTimer) { clearTimeout(modalTimer); }
+  modalTimer = setTimeout(closeModal, 120000);   /* ściana ma wrócić do siebie sama */
+}
+
+function closeModal() {
+  setFlag("modal-on", false);
+  if (modalTimer) { clearTimeout(modalTimer); modalTimer = null; }
 }
 
 /* ---------- feed prywatny ---------- */
@@ -346,15 +459,22 @@ function setFlag(name, on) {
   document.body.className = on ? (c ? c + " " + name : name) : c;
 }
 
+/* Bez agendy prawa kolumna świeciłaby pustką — wtedy kafle czujników przenoszą się
+   do niej, żeby układ został dwukolumnowy. Gdy agenda wróci, kafle wracają w lewo. */
+function placeTiles(hasAgenda) {
+  var tiles = $("tiles");
+  var target = hasAgenda ? $("col-left") : $("col-right");
+  if (tiles.parentNode !== target) { target.appendChild(tiles); }
+}
+
 function renderFeed(f) {
-  if (!f) { setFlag("no-agenda", true); setFlag("no-sensors", true); return; }
+  if (!f) { setFlag("no-agenda", true); setFlag("no-sensors", true); setFlag("no-commute", true); return; }
 
   if (f.name) { CONFIG.name = f.name; }
   if (f.weather && f.weather.lat && f.weather.lon) {
     CONFIG.lat = f.weather.lat; CONFIG.lon = f.weather.lon;
     if (f.weather.city) { $("wx-city").textContent = f.weather.city; }
   }
-
   if (f.photo && f.photo.url && f.photo.url !== CONFIG.photoUrl) {
     CONFIG.photoUrl = f.photo.url;
     $("photo-cap").textContent = f.photo.caption ? f.photo.caption : "";
@@ -379,19 +499,21 @@ function renderFeed(f) {
 
   h = "";
   if (f.agenda && f.agenda.length) {
-    for (i = 0; i < f.agenda.length && i < 5; i++) {
+    for (i = 0; i < f.agenda.length && i < 6; i++) {
       h += '<div class="ev"><div class="ev-time">' + esc(f.agenda[i].time) + "</div>" +
            '<div class="ev-title">' + esc(f.agenda[i].title) + "</div></div>";
     }
   }
   $("agenda-list").innerHTML = h;
   setFlag("no-agenda", !h);
+  placeTiles(!!h);
 
   h = "";
   if (f.sensors && f.sensors.length) {
     for (i = 0; i < f.sensors.length && i < 6; i++) {
-      h += '<div class="tile"><div class="tile-label">' + esc(f.sensors[i].label) + "</div>" +
-           '<div class="tile-val">' + esc(f.sensors[i].value) + "</div></div>";
+      h += '<div class="tile"><div class="tile-in">' +
+           '<div class="tile-label">' + esc(f.sensors[i].label) + "</div>" +
+           '<div class="tile-val">' + esc(f.sensors[i].value) + "</div></div></div>";
     }
   }
   $("tiles").innerHTML = h;
@@ -421,10 +543,27 @@ CONFIG.feedUrl = resolveFeedUrl();
 loadFeed();
 setInterval(loadFeed, CONFIG.feedEveryMin * 60000);
 
-$("recipe").addEventListener("click", function () { loadRecipe(); }, false);
+$("recipe").addEventListener("click", function () { openModal(); }, false);
+$("m-close").addEventListener("click", function (e) { e.stopPropagation(); closeModal(); }, false);
+$("m-another").addEventListener("click", function (e) {
+  e.stopPropagation();
+  loadRecipe(true);
+  if (modalTimer) { clearTimeout(modalTimer); }
+  modalTimer = setTimeout(closeModal, 120000);
+}, false);
+$("m-hero").addEventListener("click", function () { closeModal(); }, false);
+if (window.location.hash === "#recipe") { setTimeout(function () { openModal(); }, 1500); }
 
 setTimeout(function () { location.reload(); }, CONFIG.reloadEveryH * 3600000);
-document.addEventListener("touchmove", function (e) { e.preventDefault(); }, false);
+/* Globalna blokada bujania stroną — ale w nakładce z przepisem trzeba móc przewijać. */
+document.addEventListener("touchmove", function (e) {
+  var n = e.target;
+  while (n) {
+    if (n.id === "m-body") { return; }
+    n = n.parentNode;
+  }
+  e.preventDefault();
+}, false);
 </script>
 </body>
 </html>
