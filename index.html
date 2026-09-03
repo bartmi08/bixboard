@@ -79,6 +79,10 @@ body.no-agenda .col-right:empty { display: none; }
 .fc-t { font-size: 12px; }
 .fc-t span { color: #97a4be; }
 
+/* pogoda weekendowa — karta pojawia się tylko w czwartki */
+body.no-weekend .weekend { display: none; }
+.wk-fc { font-size: 0; padding-top: 2px; }
+
 /* dojazd */
 body.no-commute .commute { display: none; }
 .cm-row { font-size: 0; }
@@ -172,7 +176,7 @@ body.modal-on #modal { display: block; }
 #stale { position: absolute; top: 9px; right: 11px; font-size: 9px; letter-spacing: 1px; color: #a7b2c8; display: none; }
 </style>
 </head>
-<body class="no-agenda no-sensors no-commute">
+<body class="no-agenda no-sensors no-commute no-weekend">
 
 <div id="bg"></div>
 <div id="shade"></div>
@@ -200,6 +204,11 @@ body.modal-on #modal { display: block; }
         <div class="wx-desc" id="wx-desc">wczytuję…</div>
         <div class="wx-sub" id="wx-sub">&nbsp;</div>
         <div class="fc" id="fc"></div>
+      </div>
+
+      <div class="card weekend" id="weekend">
+        <p class="label">Weekend — <span id="wk-city"></span></p>
+        <div class="wk-fc" id="wk-fc"></div>
       </div>
 
       <div class="card commute" id="commute">
@@ -473,7 +482,11 @@ function placeTiles(hasAgenda) {
 }
 
 function renderFeed(f) {
-  if (!f) { setFlag("no-agenda", true); setFlag("no-sensors", true); setFlag("no-commute", true); return; }
+  if (!f) {
+    setFlag("no-agenda", true); setFlag("no-sensors", true);
+    setFlag("no-commute", true); setFlag("no-weekend", true);
+    return;
+  }
 
   if (f.name) { CONFIG.name = f.name; }
   if (f.weather && f.weather.lat && f.weather.lon) {
@@ -484,6 +497,21 @@ function renderFeed(f) {
     CONFIG.photoUrl = f.photo.url;
     $("photo-cap").textContent = f.photo.caption ? f.photo.caption : "";
     loadBg();
+  }
+
+  if (f.weekend && f.weekend.days && f.weekend.days.length) {
+    $("wk-city").textContent = f.weekend.city ? f.weekend.city : "";
+    var wh = "", k;
+    for (k = 0; k < f.weekend.days.length; k++) {
+      var wd = f.weekend.days[k], wi = wmo(wd.code);
+      wh += '<div class="fc-day"><div class="fc-name">' + esc(wd.label) + "</div>" +
+            '<div class="fc-ico">' + wi[0] + "</div>" +
+            '<div class="fc-t">' + wd.max + "° <span>" + wd.min + "°</span></div></div>";
+    }
+    $("wk-fc").innerHTML = wh;
+    setFlag("no-weekend", false);
+  } else {
+    setFlag("no-weekend", true);
   }
 
   if (f.commute && f.commute.minutes) {
