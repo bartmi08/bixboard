@@ -118,17 +118,51 @@ body.no-sensors .tiles { display: none; }
 .tile-label { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: #e8977a; }
 .tile-val { font-size: 17px; font-weight: 300; margin-top: 2px; }
 
-/* przepis — pas na całą szerokość, jak "Latest News" we wzorcu */
-.recipe { grid-column: 1 / span 2; }
+/* dolny rząd: przepis | warto zobaczyć (jak "Stocks | Todo" we wzorcu) */
+.recipe { grid-column: 1; }
+body.no-onnow .recipe { grid-column: 1 / span 2; }
+.onnow { grid-column: 2; }
+body.no-onnow .onnow { display: none; }
+.on-thumb {
+  width: 46px; height: 66px; border-radius: 4px; background-size: cover;
+  background-position: center; background-color: rgba(255,255,255,0.08);
+  display: inline-block; vertical-align: top; text-align: center;
+  font-size: 24px; line-height: 66px;
+}
+.on-txt { display: inline-block; vertical-align: top; margin-left: 10px; width: 74%; }
+.on-title { font-size: 14px; font-weight: 500; line-height: 1.15; }
+.on-sub { font-size: 10px; color: #e8977a; margin-top: 2px; letter-spacing: 0.5px; }
+.onnow .rc-hint { top: 11px; bottom: auto; }
+.on-desc {
+  font-size: 11px; color: #b3bdd2; line-height: 1.32; margin-top: 3px;
+  max-height: 44px; overflow: hidden;
+}
 .rc-thumb {
   width: 52px; height: 52px; border-radius: 4px; background-size: cover;
   background-position: center; background-color: #1a2135;
   display: inline-block; vertical-align: middle;
 }
-.rc-txt { display: inline-block; vertical-align: middle; margin-left: 10px; width: 80%; }
+.rc-txt { display: inline-block; vertical-align: middle; margin-left: 10px; width: 72%; }
 .rc-name { font-size: 15px; font-weight: 500; line-height: 1.15; }
 .rc-meta { font-size: 11px; color: #b3bdd2; margin-top: 2px; }
 .rc-hint { position: absolute; right: 10px; bottom: 7px; font-size: 9px; color: #7d8aa4; }
+
+/* --- przygaszanie ekranu ---------------------------------------------------
+   Safari nie ma dostępu do podświetlenia iPada, więc "ściemniamy" nakładką.
+   dim  = tryb spoczynku: widać godzinę, reszta ledwo majaczy.
+   night = 23:00–06:30, ekran czarny. Dotknięcie budzi na CONFIG.brightSec. */
+#dim {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: #000; opacity: 0; z-index: 40; pointer-events: none;
+  -webkit-transition: opacity 1.4s ease; transition: opacity 1.4s ease;
+}
+body.dim #dim { opacity: 0.82; }
+body.night #dim { opacity: 1; }
+.top { position: relative; z-index: 45; }
+.top, .cards { -webkit-transition: opacity 1.4s ease; transition: opacity 1.4s ease; }
+body.dim .top { opacity: 0.62; }
+body.night .top { opacity: 0; }
+body.dim .cards, body.night .cards { opacity: 0; }
 
 /* --- pełnoekranowy przepis (po dotknięciu karty) --- */
 #modal {
@@ -176,10 +210,11 @@ body.modal-on #modal { display: block; }
 #stale { position: absolute; top: 9px; right: 11px; font-size: 9px; letter-spacing: 1px; color: #a7b2c8; display: none; }
 </style>
 </head>
-<body class="no-agenda no-sensors no-commute no-weekend">
+<body class="no-agenda no-sensors no-commute no-weekend no-onnow">
 
 <div id="bg"></div>
 <div id="shade"></div>
+<div id="dim"></div>
 
 <div class="wrap">
 
@@ -242,6 +277,17 @@ body.modal-on #modal { display: block; }
       <div class="rc-hint">dotknij = inny</div>
     </div>
 
+    <div class="card onnow" id="onnow">
+      <p class="label">Warto zobaczyć</p>
+      <div class="on-thumb" id="on-thumb"></div>
+      <div class="on-txt">
+        <div class="on-title" id="on-title"></div>
+        <div class="on-sub" id="on-sub"></div>
+        <div class="on-desc" id="on-desc"></div>
+      </div>
+      <div class="rc-hint">dotknij = następna</div>
+    </div>
+
   </div>
 </div>
 
@@ -285,7 +331,12 @@ var CONFIG = {
   recipeEveryMin: 90,
   feedEveryMin: 10,
   bgEveryMin: 60,
-  reloadEveryH: 8
+  reloadEveryH: 8,
+
+  /* przygaszanie */
+  brightSec: 60,           /* jak długo świeci pełną jasnością po dotknięciu */
+  nightFrom: "23:00",      /* od tej godziny ekran całkiem czarny */
+  nightTo: "06:30"
 };
 
 function $(id) { return document.getElementById(id); }
@@ -303,6 +354,54 @@ function resolveFeedUrl() {
   }
   try { return window.localStorage.getItem("bixboard_feed"); } catch (e) { return null; }
 }
+
+/* ---------- jasność ekranu ---------- */
+var brightUntil = 0;
+
+function inNight() {
+  var d = new Date(), now = d.getHours() * 60 + d.getMinutes();
+  var a = CONFIG.nightFrom.split(":"), b = CONFIG.nightTo.split(":");
+  var from = parseInt(a[0], 10) * 60 + parseInt(a[1], 10);
+  var to = parseInt(b[0], 10) * 60 + parseInt(b[1], 10);
+  if (from <= to) { return now >= from && now < to; }
+  return now >= from || now < to;      /* okno przechodzi przez północ */
+}
+
+function applyMode() {
+  if (Date.now() < brightUntil || document.body.className.indexOf("modal-on") >= 0) {
+    setFlag("dim", false); setFlag("night", false);
+    return;
+  }
+  var night = inNight();
+  setFlag("night", night);
+  setFlag("dim", !night);
+}
+
+function wake() {
+  brightUntil = Date.now() + CONFIG.brightSec * 1000;
+  applyMode();
+}
+
+/* Pierwsze dotknięcie przygaszonego ekranu tylko budzi — nie klika w to, co pod spodem.
+   Dzięki temu podejście do iPada nie otwiera przypadkiem przepisu. */
+function isAsleep() {
+  var c = document.body.className;
+  return c.indexOf("dim") >= 0 || c.indexOf("night") >= 0;
+}
+
+function swallowIfAsleep(e) {
+  if (isAsleep()) {
+    wake();
+    e.stopPropagation();
+    if (e.cancelable) { e.preventDefault(); }
+    return false;
+  }
+  wake();
+  return true;
+}
+
+document.addEventListener("touchstart", swallowIfAsleep, true);
+document.addEventListener("click", swallowIfAsleep, true);
 
 /* ---------- zegar ---------- */
 var DNI = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
@@ -400,58 +499,87 @@ function loadWeather() {
   });
 }
 
-/* ---------- przepis ---------- */
-var currentMeal = null;
+/* ---------- przepis ----------
+   Przepisy przychodzą z feedu: generator wybiera je z kuchni europejskich i tłumaczy
+   na polski przez `claude -p` (raz na dobę, z cache). Board tylko wyświetla.
+   Bez feedu zostaje awaryjne losowanie wprost z TheMealDB — wtedy po angielsku. */
+var recipes = [];
+var recipeIdx = 0;
 var modalTimer = null;
 
-function loadRecipe(thenOpen) {
+/* TheMealDB -> ta sama struktura, co w feedzie */
+function normalizeMeal(m) {
+  var ings = [], i, name, amount;
+  for (i = 1; i <= 20; i++) {
+    name = m["strIngredient" + i];
+    if (!name || !name.replace(/\s/g, "")) { continue; }
+    amount = m["strMeasure" + i] || "";
+    ings.push({ item: name, amount: amount.replace(/^\s+|\s+$/g, "") });
+  }
+  var steps = [], parts = (m.strInstructions || "").replace(/\r/g, "").split(/\n+/);
+  for (i = 0; i < parts.length; i++) {
+    if (parts[i].replace(/\s/g, "")) { steps.push(parts[i]); }
+  }
+  return {
+    name: m.strMeal || "",
+    area: (m.strArea && m.strArea !== "Unknown") ? m.strArea : "",
+    category: m.strCategory || "",
+    thumb: m.strMealThumb || "",
+    ingredients: ings,
+    steps: steps
+  };
+}
+
+function metaOf(r) {
+  var parts = [];
+  if (r.area) { parts.push(r.area); }
+  if (r.category) { parts.push(r.category); }
+  return parts.join(" · ");
+}
+
+function showRecipe(i) {
+  if (!recipes.length) { return; }
+  recipeIdx = ((i % recipes.length) + recipes.length) % recipes.length;
+  var r = recipes[recipeIdx];
+  $("rc-name").textContent = r.name;
+  $("rc-meta").textContent = metaOf(r);
+  if (r.thumb) { $("rc-thumb").style.backgroundImage = 'url("' + r.thumb + '")'; }
+}
+
+function loadRecipeFallback(thenOpen) {
   getJSON("https://www.themealdb.com/api/json/v1/1/random.php", function (j) {
     if (!j || !j.meals || !j.meals[0]) { return; }
-    var m = j.meals[0];
-    currentMeal = m;
-    if (thenOpen) { fillModal(m); setFlag("modal-on", true); }
-    $("rc-name").textContent = m.strMeal;
-    var parts = [];
-    if (m.strArea && m.strArea !== "Unknown") { parts.push(m.strArea); }
-    if (m.strCategory) { parts.push(m.strCategory); }
-    $("rc-meta").textContent = parts.join(" · ");
-    if (m.strMealThumb) { $("rc-thumb").style.backgroundImage = 'url("' + m.strMealThumb + '")'; }
+    recipes = [normalizeMeal(j.meals[0])];
+    showRecipe(0);
+    if (thenOpen) { fillModal(recipes[0]); setFlag("modal-on", true); }
   });
 }
 
-/* Pełny przepis przychodzi już w tym samym zapytaniu, co karta (random.php zwraca
-   składniki, miary i instrukcje) — otwarcie nakładki nie dociąga niczego z sieci. */
-function fillModal(m) {
-  $("m-title").textContent = m.strMeal;
-  var meta = [];
-  if (m.strArea && m.strArea !== "Unknown") { meta.push(m.strArea); }
-  if (m.strCategory) { meta.push(m.strCategory); }
-  $("m-meta").textContent = meta.join(" · ");
-  $("m-hero").style.backgroundImage = m.strMealThumb ? 'url("' + m.strMealThumb + '")' : "";
+/* Nakładka nie dociąga niczego — komplet (składniki, miary, kroki) jest już w pamięci. */
+function fillModal(r) {
+  $("m-title").textContent = r.name;
+  $("m-meta").textContent = metaOf(r);
+  $("m-hero").style.backgroundImage = r.thumb ? 'url("' + r.thumb + '")' : "";
 
-  var h = "", i, ing, mea;
-  for (i = 1; i <= 20; i++) {
-    ing = m["strIngredient" + i];
-    mea = m["strMeasure" + i];
-    if (!ing || !ing.replace(/\s/g, "")) { continue; }
-    h += '<div class="m-ing"><b>' + esc(ing) + "</b>" +
-         (mea && mea.replace(/\s/g, "") ? " — " + esc(mea) : "") + "</div>";
+  var h = "", i, ing;
+  for (i = 0; i < r.ingredients.length; i++) {
+    ing = r.ingredients[i];
+    h += '<div class="m-ing"><b>' + esc(ing.item) + "</b>" +
+         (ing.amount ? " — " + esc(ing.amount) : "") + "</div>";
   }
   $("m-ings").innerHTML = h;
 
-  var txt = (m.strInstructions || "").replace(/\r/g, "");
-  var parts = txt.split(/\n+/), j2;
   h = "";
-  for (j2 = 0; j2 < parts.length; j2++) {
-    if (parts[j2].replace(/\s/g, "")) { h += '<div class="m-step">' + esc(parts[j2]) + "</div>"; }
+  for (i = 0; i < r.steps.length; i++) {
+    h += '<div class="m-step">' + esc(r.steps[i]) + "</div>";
   }
   $("m-steps").innerHTML = h;
   $("m-body").scrollTop = 0;
 }
 
 function openModal() {
-  if (!currentMeal) { loadRecipe(true); return; }
-  fillModal(currentMeal);
+  if (!recipes.length) { loadRecipeFallback(true); return; }
+  fillModal(recipes[recipeIdx]);
   setFlag("modal-on", true);
   if (modalTimer) { clearTimeout(modalTimer); }
   modalTimer = setTimeout(closeModal, 120000);   /* ściana ma wrócić do siebie sama */
@@ -460,6 +588,28 @@ function openModal() {
 function closeModal() {
   setFlag("modal-on", false);
   if (modalTimer) { clearTimeout(modalTimer); modalTimer = null; }
+}
+
+/* ---------- warto zobaczyć ----------
+   Kino (IMDb >= 8.0) i weekendowe wydarzenia w Krakowie zbiera generator raz na dobę
+   przez `claude -p` z wyszukiwaniem — board tylko przewija gotową listę. */
+var onnow = [];
+var onnowIdx = 0;
+
+function showOnnow(i) {
+  if (!onnow.length) { return; }
+  onnowIdx = ((i % onnow.length) + onnow.length) % onnow.length;
+  var o = onnow[onnowIdx];
+  $("on-title").textContent = o.title;
+  $("on-sub").textContent = o.sub ? o.sub : "";
+  $("on-desc").textContent = o.desc ? o.desc : "";
+  if (o.image) {
+    $("on-thumb").style.backgroundImage = 'url("' + o.image + '")';
+    $("on-thumb").textContent = "";
+  } else {
+    $("on-thumb").style.backgroundImage = "";
+    $("on-thumb").textContent = (o.kind === "film") ? "\u{1F3AC}" : "\u{1F3AD}";
+  }
 }
 
 /* ---------- feed prywatny ---------- */
@@ -484,7 +634,7 @@ function placeTiles(hasAgenda) {
 function renderFeed(f) {
   if (!f) {
     setFlag("no-agenda", true); setFlag("no-sensors", true);
-    setFlag("no-commute", true); setFlag("no-weekend", true);
+    setFlag("no-commute", true); setFlag("no-weekend", true); setFlag("no-onnow", true);
     return;
   }
 
@@ -497,6 +647,20 @@ function renderFeed(f) {
     CONFIG.photoUrl = f.photo.url;
     $("photo-cap").textContent = f.photo.caption ? f.photo.caption : "";
     loadBg();
+  }
+
+  if (f.whats_on && f.whats_on.length) {
+    onnow = f.whats_on;
+    showOnnow(onnowIdx);
+    setFlag("no-onnow", false);
+  } else {
+    setFlag("no-onnow", true);
+  }
+
+  if (f.recipes && f.recipes.length) {
+    var sameFirst = recipes.length && recipes[0].name === f.recipes[0].name;
+    recipes = f.recipes;
+    if (!sameFirst) { showRecipe(0); } else { showRecipe(recipeIdx); }
   }
 
   if (f.weekend && f.weekend.days && f.weekend.days.length) {
@@ -575,23 +739,32 @@ setInterval(loadBg, CONFIG.bgEveryMin * 60000);
 loadWeather();
 setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
 
-loadRecipe();
-setInterval(loadRecipe, CONFIG.recipeEveryMin * 60000);
+setTimeout(function () { if (!recipes.length) { loadRecipeFallback(false); } }, 4000);
 
 CONFIG.feedUrl = resolveFeedUrl();
 loadFeed();
 setInterval(loadFeed, CONFIG.feedEveryMin * 60000);
 
 $("recipe").addEventListener("click", function () { openModal(); }, false);
+$("onnow").addEventListener("click", function () { showOnnow(onnowIdx + 1); }, false);
 $("m-close").addEventListener("click", function (e) { e.stopPropagation(); closeModal(); }, false);
 $("m-another").addEventListener("click", function (e) {
   e.stopPropagation();
-  loadRecipe(true);
+  if (recipes.length > 1) {
+    showRecipe(recipeIdx + 1);
+    fillModal(recipes[recipeIdx]);
+  } else {
+    loadRecipeFallback(true);
+  }
   if (modalTimer) { clearTimeout(modalTimer); }
   modalTimer = setTimeout(closeModal, 120000);
 }, false);
 $("m-hero").addEventListener("click", function () { closeModal(); }, false);
 if (window.location.hash === "#recipe") { setTimeout(function () { openModal(); }, 1500); }
+
+/* ?wake=1 — podgląd w pełnej jasności (przydatne przy sprawdzaniu z przeglądarki) */
+if (window.location.search.indexOf("wake=1") >= 0) { wake(); } else { applyMode(); }
+setInterval(applyMode, 15000);
 
 setTimeout(function () { location.reload(); }, CONFIG.reloadEveryH * 3600000);
 /* Globalna blokada bujania stroną — ale w nakładce z przepisem trzeba móc przewijać. */
