@@ -39,9 +39,8 @@ html, body {
 
 /* --- góra: zegar na zdjęciu (~34% wysokości) --- */
 .top { text-align: center; padding: 26px 0 0 0; height: 34%; text-shadow: 0 2px 16px rgba(0,0,0,0.5); }
-#time { font-size: 72px; line-height: 1; font-weight: 200; letter-spacing: -2px; font-variant-numeric: tabular-nums; }
+#time { font-size: 94px; line-height: 1; font-weight: 200; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
 #date { font-size: 18px; font-weight: 300; margin-top: 4px; color: #f3f5fb; }
-#hello { font-size: 12px; color: #cbd4e6; margin-top: 7px; }
 #photo-cap { font-size: 10px; color: #a7b2c8; margin-top: 4px; }
 
 /* --- siatka kart --- */
@@ -221,7 +220,6 @@ body.modal-on #modal { display: block; }
   <div class="top">
     <div id="time">--:--</div>
     <div id="date">&nbsp;</div>
-    <div id="hello">&nbsp;</div>
     <div id="photo-cap"></div>
   </div>
 
@@ -415,12 +413,6 @@ function tick() {
   var dn = DNI[d.getDay()];
   $("date").textContent = dn.charAt(0).toUpperCase() + dn.slice(1) +
                           ", " + d.getDate() + " " + MIES[d.getMonth()];
-  var h = d.getHours(), g;
-  if (h < 5) { g = "Dobrej nocy"; }
-  else if (h < 11) { g = "Dzień dobry"; }
-  else if (h < 18) { g = "Miłego dnia"; }
-  else { g = "Dobry wieczór"; }
-  $("hello").textContent = g + ", " + CONFIG.name + ".";
 }
 
 /* ---------- tło ---------- */
