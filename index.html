@@ -37,11 +37,14 @@ html, body {
 }
 .wrap { position: relative; height: 100%; padding: 14px; }
 
-/* --- góra: zegar na zdjęciu (~34% wysokości) --- */
-.top { text-align: center; padding: 26px 0 0 0; height: 34%; text-shadow: 0 2px 16px rgba(0,0,0,0.5); }
-#time { font-size: 94px; line-height: 1; font-weight: 200; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
-#date { font-size: 18px; font-weight: 300; margin-top: 4px; color: #f3f5fb; }
-#photo-cap { font-size: 10px; color: #a7b2c8; margin-top: 4px; }
+/* --- góra: pogoda po lewej, zegar obok niej (~34% wysokości) ---
+   Bez flexa: iOS 12 nie ma `gap`, a pozycjonowanie absolutne jest tu pewniejsze. */
+.top { position: relative; height: 34%; padding: 20px 0 0 0; text-shadow: 0 2px 16px rgba(0,0,0,0.5); }
+.top-wx { position: absolute; left: 0; top: 20px; width: 36%; }
+.top-clock { margin-left: 38%; text-align: center; }
+#time { font-size: 160px; line-height: 1; font-weight: 200; letter-spacing: -6px; font-variant-numeric: tabular-nums; }
+#date { font-size: 22px; font-weight: 300; margin-top: 2px; color: #f3f5fb; }
+#photo-cap { font-size: 10px; color: #a7b2c8; margin-top: 6px; }
 
 /* --- siatka kart --- */
 .cards {
@@ -160,6 +163,7 @@ body.night #dim { opacity: 1; }
 .top { position: relative; z-index: 45; }
 .top, .cards { -webkit-transition: opacity 1.4s ease; transition: opacity 1.4s ease; }
 body.dim .top { opacity: 0.62; }
+body.dim .top-wx, body.night .top-wx { opacity: 0; }
 body.night .top { opacity: 0; }
 body.dim .cards, body.night .cards { opacity: 0; }
 
@@ -218,15 +222,8 @@ body.modal-on #modal { display: block; }
 <div class="wrap">
 
   <div class="top">
-    <div id="time">--:--</div>
-    <div id="date">&nbsp;</div>
-    <div id="photo-cap"></div>
-  </div>
 
-  <div class="cards">
-
-    <div class="col col-left" id="col-left">
-
+    <div class="top-wx">
       <div class="card wx">
         <p class="label">Pogoda — <span id="wx-city">Bibice</span></p>
         <div id="stale">DANE SPRZED CHWILI</div>
@@ -238,6 +235,19 @@ body.modal-on #modal { display: block; }
         <div class="wx-sub" id="wx-sub">&nbsp;</div>
         <div class="fc" id="fc"></div>
       </div>
+    </div>
+
+    <div class="top-clock">
+      <div id="time">--:--</div>
+      <div id="date">&nbsp;</div>
+      <div id="photo-cap"></div>
+    </div>
+
+  </div>
+
+  <div class="cards">
+
+    <div class="col col-left" id="col-left">
 
       <div class="card weekend" id="weekend">
         <p class="label">Weekend — <span id="wk-city"></span></p>
