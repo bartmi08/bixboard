@@ -341,7 +341,7 @@ var CONFIG = {
   recipeEveryMin: 90,
   feedEveryMin: 3,      /* czasy dojazdu i czujniki mają być na bieżąco */
   bgEveryMin: 60,
-  reloadEveryH: 8,
+  reloadEveryH: 1,
 
   /* przygaszanie */
   brightSec: 60,           /* jak długo świeci pełną jasnością po dotknięciu */
@@ -770,7 +770,14 @@ if (window.location.hash === "#recipe") { setTimeout(function () { openModal(); 
 if (window.location.search.indexOf("wake=1") >= 0) { wake(); } else { applyMode(); }
 setInterval(applyMode, 15000);
 
-setTimeout(function () { location.reload(); }, CONFIG.reloadEveryH * 3600000);
+/* Przeładowanie strony — co godzinę, ZAWSZE z podbitym `v=` w adresie.
+   Samo location.reload() na WebKicie z 2018 potrafi podać stronę z cache i wtedy
+   poprawka wypchnięta na GitHub Pages nie dociera do iPada tygodniami. Przy okazji
+   godzinny cykl czyści pamięć, która na tym Safari puchnie. */
+setTimeout(function () {
+  var q = window.location.search.replace(/[?&]v=[0-9]+/, "").replace(/^\?/, "");
+  window.location.replace(window.location.pathname + "?" + (q ? q + "&" : "") + "v=" + (+new Date()));
+}, CONFIG.reloadEveryH * 3600000);
 /* Globalna blokada bujania stroną — ale w nakładce z przepisem trzeba móc przewijać. */
 document.addEventListener("touchmove", function (e) {
   var n = e.target;
