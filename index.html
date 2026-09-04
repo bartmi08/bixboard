@@ -95,6 +95,23 @@ body.no-commute .commute { display: none; }
 .cm-unit { font-size: 13px; color: #c8d1e2; display: inline-block; vertical-align: middle; margin-left: 4px; }
 .cm-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 
+/* radar opadów — karta pokazuje się tylko, gdy coś nadciąga */
+body.no-rain .radar { display: none; }
+.rn {
+  height: 34px; font-size: 0; margin-top: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+.rn-b { display: inline-block; width: 6.25%; height: 100%; position: relative; }
+.rn-f {
+  position: absolute; left: 1px; right: 1px; bottom: 0;
+  background: #6ea8ff; border-radius: 1px 1px 0 0;
+}
+.rn-b.now .rn-f { background: #e8977a; }
+.rn-ax { font-size: 9px; color: #8f9ab2; margin-top: 3px; }
+.rn-ax span { display: inline-block; width: 25%; }
+.rn-ax span.last { width: auto; float: right; }
+.rn-txt { font-size: 12px; color: #f0f3fa; margin-top: 7px; }
+
 /* radar opadów */
 .radar-box {
   position: relative; width: 100%; height: 150px; overflow: hidden;
@@ -266,9 +283,12 @@ body.modal-on #modal { display: block; }
     <div class="col col-left" id="col-left">
 
       <div class="card radar" id="radar">
-        <p class="label">Radar opadów</p>
+        <p class="label">Opady</p>
         <div class="radar-box" id="rd"></div>
         <div class="rd-cap"><span id="rd-time">—</span> &middot; RainViewer, Esri</div>
+        <div class="rn" id="rn"></div>
+        <div class="rn-ax"><span>teraz</span><span>+1 h</span><span>+2 h</span><span>+3 h</span><span class="last">+4 h</span></div>
+        <div class="rn-txt" id="rn-txt">&nbsp;</div>
       </div>
 
       <div class="card weekend" id="weekend">
@@ -496,6 +516,7 @@ function loadWeather() {
           "?latitude=" + CONFIG.lat + "&longitude=" + CONFIG.lon +
           "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m" +
           "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
+          "&minutely_15=precipitation,precipitation_probability&forecast_minutely_15=48" +
           "&timezone=Europe%2FWarsaw&forecast_days=4";
   getJSON(u, function (j) {
     if (!j || !j.current) {
@@ -505,6 +526,7 @@ function loadWeather() {
     }
     lastWeatherOk = Date.now();
     $("stale").style.display = "none";
+    updateRain(j);
     var c = j.current, w = wmo(c.weather_code);
     $("wx-ico").textContent = w[0];
     $("wx-temp").innerHTML = Math.round(c.temperature_2m) + "&deg;";
@@ -804,15 +826,86 @@ function drawRadar(host, path) {
   box.innerHTML = html + '<div class="rd-dot"></div>';
 }
 
+var radarLast = null;
+
+function redrawRadar() {
+  /* karta bywa schowana (display:none) — wtedy kafle nie mają gdzie się położyć,
+     więc rysujemy je dopiero, gdy znów jest widoczna. */
+  if (radarLast) { drawRadar(radarLast.host, radarLast.path); }
+}
+
 function loadRadar() {
   getJSON("https://api.rainviewer.com/public/weather-maps.json", function (j) {
     var past = j && j.radar && j.radar.past;
     if (!past || !past.length) { return; }             /* padło — zostaje ostatnia dobra klatka */
     var last = past[past.length - 1];
+    radarLast = { host: j.host, path: last.path };
     drawRadar(j.host, last.path);
     var t = new Date(last.time * 1000);
     $("rd-time").textContent = pad(t.getHours()) + ":" + pad(t.getMinutes());
   });
+}
+
+/* ---------- opady na najbliższe godziny ----------
+   Karta wisi na ekranie tylko wtedy, gdy w ciągu 6 h ma coś spaść; pasek pokazuje
+   kwadranse na 4 h do przodu. Dane: Open-Meteo `minutely_15`, doklejone do tego
+   samego zapytania, którym board bierze pogodę. */
+function parseLocalTs(t) {
+  var m = /(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(t || "");
+  if (!m) { return null; }                      /* stare Safari nie parsuje takiego ISO samo */
+  return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0, 0);
+}
+
+function drawRainBars(vals) {
+  var max = 0.6, i;                             /* mżawki też musi być widać */
+  for (i = 0; i < vals.length; i++) { if (vals[i] > max) { max = vals[i]; } }
+  var html = "";
+  for (i = 0; i < vals.length; i++) {
+    var h = Math.round(Math.min(1, vals[i] / max) * 100);
+    html += '<div class="rn-b' + (i === 0 ? " now" : "") + '"><div class="rn-f" style="height:' +
+            (vals[i] > 0 ? Math.max(h, 6) : 0) + '%"></div></div>';
+  }
+  $("rn").innerHTML = html;
+}
+
+function updateRain(j) {
+  var m = j && j.minutely_15;
+  if (!m || !m.time || !m.time.length) { return; }
+  var now = new Date(), i0 = -1, i;
+  for (i = 0; i < m.time.length; i++) {
+    var t = parseLocalTs(m.time[i]);
+    if (t && now - t < 15 * 60000) { i0 = i; break; }   /* pierwszy kwadrans, który jeszcze trwa */
+  }
+  if (i0 < 0) { return; }
+
+  var next4 = [], maxWet = 0, maxProb = 0, firstWet = -1;
+  for (var k = 0; k < 24; k++) {                        /* 24 kwadranse = 6 h */
+    var v = m.precipitation[i0 + k];
+    if (typeof v !== "number") { break; }
+    var pr = (m.precipitation_probability || [])[i0 + k] || 0;
+    if (k < 16) { next4.push(v); }
+    if (v > maxWet) { maxWet = v; }
+    if (pr > maxProb) { maxProb = pr; }
+    if (firstWet < 0 && v >= 0.1) { firstWet = i0 + k; }
+  }
+
+  var wet = maxWet >= 0.1 || maxProb >= 60;
+  setFlag("no-rain", !wet);
+  if (!wet) { return; }
+
+  drawRainBars(next4);
+  var txt;
+  if (next4.length && next4[0] >= 0.1) {
+    txt = "Pada — do " + (Math.round(maxWet * 4 * 10) / 10 + "").replace(".", ",") + " mm/h";
+  } else if (firstWet >= 0) {
+    var ft = parseLocalTs(m.time[firstWet]);
+    var kw = firstWet - i0;
+    txt = (kw < 16 ? "Deszcz od " : "Deszcz około ") + pad(ft.getHours()) + ":" + pad(ft.getMinutes());
+  } else {
+    txt = "Możliwe opady, do " + maxProb + "%";
+  }
+  $("rn-txt").textContent = txt;
+  setTimeout(redrawRadar, 0);                           /* karta właśnie się pokazała — dorysuj kafle */
 }
 
 /* ---------- start ---------- */
@@ -825,7 +918,7 @@ setInterval(loadBg, CONFIG.bgEveryMin * 60000);
 loadWeather();
 setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
 
-drawRadar("", "");            /* sam podkład od razu, opady dojdą po odpowiedzi API */
+setFlag("no-rain", true);     /* dopóki nie wiemy, karty nie ma */
 loadRadar();
 setInterval(loadRadar, CONFIG.radarEveryMin * 60000);
 
