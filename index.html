@@ -95,6 +95,20 @@ body.no-commute .commute { display: none; }
 .cm-unit { font-size: 13px; color: #c8d1e2; display: inline-block; vertical-align: middle; margin-left: 4px; }
 .cm-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 
+/* radar opadów */
+.radar-box {
+  position: relative; width: 100%; height: 150px; overflow: hidden;
+  border-radius: 4px; background: #0d1220;
+}
+.rd-t { position: absolute; width: 256px; height: 256px; }
+.rd-r { opacity: 0.85; }
+.rd-dot {
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -5px 0 0 -5px;
+  border-radius: 50%; background: #e8977a;
+  -webkit-box-shadow: 0 0 0 2px rgba(0,0,0,0.6); box-shadow: 0 0 0 2px rgba(0,0,0,0.6);
+}
+.rd-cap { font-size: 9px; color: #8f9ab2; margin-top: 4px; text-align: right; }
+
 /* agenda */
 body.no-agenda .agenda { display: none; }
 .ev {
@@ -251,6 +265,12 @@ body.modal-on #modal { display: block; }
 
     <div class="col col-left" id="col-left">
 
+      <div class="card radar" id="radar">
+        <p class="label">Radar opadów</p>
+        <div class="radar-box" id="rd"></div>
+        <div class="rd-cap"><span id="rd-time">—</span> &middot; RainViewer, Esri</div>
+      </div>
+
       <div class="card weekend" id="weekend">
         <p class="label">Weekend — <span id="wk-city"></span></p>
         <div class="wk-fc" id="wk-fc"></div>
@@ -341,6 +361,8 @@ var CONFIG = {
   recipeEveryMin: 90,
   feedEveryMin: 3,      /* czasy dojazdu i czujniki mają być na bieżąco */
   bgEveryMin: 60,
+  radarEveryMin: 5,
+  radarZoom: 7,       /* 7 = ~200 km w poprzek karty; 8 to już tylko okolica */
   reloadEveryH: 1,
 
   /* przygaszanie */
@@ -733,6 +755,66 @@ function loadFeed() {
           function (j) { renderFeed(j); });
 }
 
+/* ---------- radar opadów ----------
+   Bez biblioteki map: wycinek jest stały, więc wystarczy policzyć numery kafli
+   i poukładać je absolutnie. Leaflet na WebKicie z 2018 byłby armatą na muchę.
+   Podkład: Esri Dark Gray Canvas (bez klucza; CARTO od niedawna żąda klucza i znaczy
+   kafle znakiem wodnym). Warstwa opadów: RainViewer, też bez klucza, CORS `*`.
+   Uwaga: u Esri kolejność w adresie to z/y/x, nie z/x/y. */
+var ESRI = "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_";
+
+function lonToPx(lon, z) { return (lon + 180) / 360 * 256 * Math.pow(2, z); }
+function latToPx(lat, z) {
+  var r = lat * Math.PI / 180;
+  return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * 256 * Math.pow(2, z);
+}
+
+function drawRadar(host, path) {
+  var box = $("rd");
+  var w = box.offsetWidth, h = box.offsetHeight;
+  if (!w || !h) { return; }
+  var z = CONFIG.radarZoom, n = Math.pow(2, z);
+  var left = lonToPx(CONFIG.lon, z) - w / 2;
+  var top = latToPx(CONFIG.lat, z) - h / 2;
+  var html = "";
+  for (var ty = Math.floor(top / 256); ty <= Math.floor((top + h) / 256); ty++) {
+    if (ty < 0 || ty >= n) { continue; }
+    for (var tx = Math.floor(left / 256); tx <= Math.floor((left + w) / 256); tx++) {
+      var wx = ((tx % n) + n) % n;                 /* przy krawędzi świata kafle się zawijają */
+      var st = ' style="left:' + (tx * 256 - left) + 'px;top:' + (ty * 256 - top) + 'px"';
+      var hide = ' onerror="this.style.display=\'none\'"';
+      html += '<img class="rd-t"' + st + hide + ' src="' + ESRI + 'Base/MapServer/tile/' +
+              z + '/' + ty + '/' + wx + '">';
+      if (path) {
+        html += '<img class="rd-t rd-r"' + st + hide + ' src="' + host + path +
+                '/256/' + z + '/' + wx + '/' + ty + '/4/1_1.png">';
+      }
+    }
+  }
+  /* nazwy miejscowości idą na sam wierzch, żeby radar ich nie zamalował */
+  for (var ly = Math.floor(top / 256); ly <= Math.floor((top + h) / 256); ly++) {
+    if (ly < 0 || ly >= n) { continue; }
+    for (var lx = Math.floor(left / 256); lx <= Math.floor((left + w) / 256); lx++) {
+      var lwx = ((lx % n) + n) % n;
+      html += '<img class="rd-t"' + ' style="left:' + (lx * 256 - left) + 'px;top:' +
+              (ly * 256 - top) + 'px"' + ' onerror="this.style.display=\'none\'"' +
+              ' src="' + ESRI + 'Reference/MapServer/tile/' + z + '/' + ly + '/' + lwx + '">';
+    }
+  }
+  box.innerHTML = html + '<div class="rd-dot"></div>';
+}
+
+function loadRadar() {
+  getJSON("https://api.rainviewer.com/public/weather-maps.json", function (j) {
+    var past = j && j.radar && j.radar.past;
+    if (!past || !past.length) { return; }             /* padło — zostaje ostatnia dobra klatka */
+    var last = past[past.length - 1];
+    drawRadar(j.host, last.path);
+    var t = new Date(last.time * 1000);
+    $("rd-time").textContent = pad(t.getHours()) + ":" + pad(t.getMinutes());
+  });
+}
+
 /* ---------- start ---------- */
 tick();
 setInterval(tick, 1000);
@@ -742,6 +824,10 @@ setInterval(loadBg, CONFIG.bgEveryMin * 60000);
 
 loadWeather();
 setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
+
+drawRadar("", "");            /* sam podkład od razu, opady dojdą po odpowiedzi API */
+loadRadar();
+setInterval(loadRadar, CONFIG.radarEveryMin * 60000);
 
 setTimeout(function () { if (!recipes.length) { loadRecipeFallback(false); } }, 4000);
 
