@@ -95,6 +95,24 @@ body.no-commute .commute { display: none; }
 .cm-unit { font-size: 13px; color: #c8d1e2; display: inline-block; vertical-align: middle; margin-left: 4px; }
 .cm-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 
+/* siatka miesiąca */
+.mc { font-size: 0; }
+.mc-c {
+  display: inline-block; width: 14.285%; text-align: center;
+  font-size: 12px; padding: 3px 0 5px 0; position: relative; color: #eef1f8;
+}
+.mc-hd .mc-c { font-size: 9px; letter-spacing: 1px; color: #8f9ab2; padding: 0 0 3px 0; }
+.mc-c.out { color: #59627a; }
+.mc-c.today b {
+  display: inline-block; width: 21px; height: 21px; line-height: 21px;
+  border-radius: 50%; background: #e8977a; color: #16192b; font-weight: 600;
+  margin: -3px 0;
+}
+.mc-dot {
+  position: absolute; left: 50%; bottom: 1px; width: 3px; height: 3px;
+  margin-left: -2px; border-radius: 50%; background: #6ea8ff;
+}
+
 /* angielski — kafelek tylko w oknach porannym i wieczornym */
 body.no-english .english { display: none; }
 .en-i { margin-bottom: 8px; }
@@ -329,6 +347,12 @@ body.modal-on #modal { display: block; }
       <div class="card agenda" id="agenda-card">
         <p class="label">Kalendarz</p>
         <div id="agenda-list"></div>
+      </div>
+
+      <div class="card month" id="month">
+        <p class="label" id="mc-label">&nbsp;</p>
+        <div class="mc mc-hd"><div class="mc-c">pn</div><div class="mc-c">wt</div><div class="mc-c">śr</div><div class="mc-c">cz</div><div class="mc-c">pt</div><div class="mc-c">sb</div><div class="mc-c">nd</div></div>
+        <div class="mc" id="mc-grid"></div>
       </div>
     </div>
 
@@ -713,6 +737,12 @@ function renderFeed(f) {
     loadBg();
   }
 
+  agendaDates = {};
+  if (f.agenda_dates) {
+    for (var di = 0; di < f.agenda_dates.length; di++) { agendaDates[f.agenda_dates[di]] = 1; }
+  }
+  renderMonth();
+
   englishItems = (f.english && f.english.length) ? f.english : [];
   renderEnglish();
 
@@ -865,6 +895,36 @@ function loadRadar() {
   });
 }
 
+/* ---------- siatka miesiąca ----------
+   Rysowana lokalnie z zegara — feed dokłada tylko `agenda_dates`, czyli dni,
+   pod którymi ma się pojawić kropka. Tydzień zaczyna się w poniedziałek. */
+var MIESIACE_M = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec",
+                  "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+var agendaDates = {};
+
+function iso(d) {
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+
+function renderMonth() {
+  var now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  $("mc-label").textContent = MIESIACE_M[m] + " " + y;
+  var first = new Date(y, m, 1);
+  var shift = (first.getDay() + 6) % 7;              /* 0 = poniedziałek */
+  var start = new Date(y, m, 1 - shift);
+  var today = iso(now), html = "";
+  for (var i = 0; i < 42; i++) {
+    var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    if (i >= 35 && d.getMonth() !== m) { break; }    /* szósty rząd tylko gdy potrzebny */
+    var key = iso(d);
+    var cls = "mc-c" + (d.getMonth() !== m ? " out" : "") + (key === today ? " today" : "");
+    var txt = (key === today) ? "<b>" + d.getDate() + "</b>" : d.getDate();
+    html += '<div class="' + cls + '">' + txt +
+            (agendaDates[key] && d.getMonth() === m ? '<div class="mc-dot"></div>' : "") + '</div>';
+  }
+  $("mc-grid").innerHTML = html;
+}
+
 /* ---------- angielski ----------
    Słówko dla Olka i brytyjski zwrot dla Janka przychodzą gotowe z feedu (raz na dobę).
    Board pilnuje tylko, żeby kafelek wisiał w oknach z CONFIG.englishHours — rano przy
@@ -965,6 +1025,8 @@ setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
 
 setFlag("no-rain", true);     /* dopóki nie wiemy, karty nie ma */
 setFlag("no-english", true);
+renderMonth();
+setInterval(renderMonth, 600000);    /* po północy siatka musi przeskoczyć na nowy dzień */
 setInterval(renderEnglish, 60000);   /* wejście i wyjście z okna godzinowego */
 loadRadar();
 setInterval(loadRadar, CONFIG.radarEveryMin * 60000);
