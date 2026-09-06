@@ -95,6 +95,16 @@ body.no-commute .commute { display: none; }
 .cm-unit { font-size: 13px; color: #c8d1e2; display: inline-block; vertical-align: middle; margin-left: 4px; }
 .cm-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 
+/* angielski — kafelek tylko w oknach porannym i wieczornym */
+body.no-english .english { display: none; }
+.en-i { margin-bottom: 8px; }
+.en-i:last-child { margin-bottom: 0; }
+.en-who { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: #e8977a; }
+.en-w { font-size: 14px; margin-top: 1px; }
+.en-w b { font-weight: 600; }
+.en-w span { color: #b3bdd2; }
+.en-n { font-size: 10px; color: #8f9ab2; margin-top: 2px; line-height: 1.3; }
+
 /* radar opadów — karta pokazuje się tylko, gdy coś nadciąga */
 body.no-rain .radar { display: none; }
 .rn {
@@ -308,6 +318,11 @@ body.modal-on #modal { display: block; }
 
       <div class="tiles" id="tiles"></div>
 
+      <div class="card english" id="english">
+        <p class="label">Angielski</p>
+        <div id="en-list"></div>
+      </div>
+
     </div>
 
     <div class="col col-right" id="col-right">
@@ -381,6 +396,7 @@ var CONFIG = {
   recipeEveryMin: 90,
   feedEveryMin: 3,      /* czasy dojazdu i czujniki mają być na bieżąco */
   bgEveryMin: 60,
+  englishHours: [[7, 10], [18, 21]],   /* kiedy pokazywać słówko dnia */
   radarEveryMin: 5,
   radarZoom: 7,       /* 7 = ~200 km w poprzek karty; 8 to już tylko okolica */
   reloadEveryH: 1,
@@ -697,6 +713,9 @@ function renderFeed(f) {
     loadBg();
   }
 
+  englishItems = (f.english && f.english.length) ? f.english : [];
+  renderEnglish();
+
   if (f.whats_on && f.whats_on.length) {
     onnow = f.whats_on;
     showOnnow(onnowIdx);
@@ -846,6 +865,32 @@ function loadRadar() {
   });
 }
 
+/* ---------- angielski ----------
+   Słówko dla Olka i brytyjski zwrot dla Janka przychodzą gotowe z feedu (raz na dobę).
+   Board pilnuje tylko, żeby kafelek wisiał w oknach z CONFIG.englishHours — rano przy
+   śniadaniu i wieczorem, a nie przez cały dzień. */
+var englishItems = [];
+
+function renderEnglish() {
+  var h = new Date().getHours(), on = false, i;
+  for (i = 0; i < CONFIG.englishHours.length; i++) {
+    if (h >= CONFIG.englishHours[i][0] && h < CONFIG.englishHours[i][1]) { on = true; }
+  }
+  setFlag("no-english", !(on && englishItems.length));
+  if (!englishItems.length) { return; }
+  var html = "";
+  for (i = 0; i < englishItems.length; i++) {
+    var it = englishItems[i];
+    html += '<div class="en-i"><div class="en-who">' + esc(it.who || "") + '</div>' +
+            '<div class="en-w"><b>' + esc(it.en) + '</b> <span>&mdash; ' + esc(it.pl) + '</span></div>';
+    var n = it.note ? esc(it.note) : "";
+    if (it.note_pl) { n += " &middot; " + esc(it.note_pl); }
+    if (n) { html += '<div class="en-n">' + n + '</div>'; }
+    html += '</div>';
+  }
+  $("en-list").innerHTML = html;
+}
+
 /* ---------- opady na najbliższe godziny ----------
    Karta wisi na ekranie tylko wtedy, gdy w ciągu 6 h ma coś spaść; pasek pokazuje
    kwadranse na 4 h do przodu. Dane: Open-Meteo `minutely_15`, doklejone do tego
@@ -919,6 +964,8 @@ loadWeather();
 setInterval(loadWeather, CONFIG.weatherEveryMin * 60000);
 
 setFlag("no-rain", true);     /* dopóki nie wiemy, karty nie ma */
+setFlag("no-english", true);
+setInterval(renderEnglish, 60000);   /* wejście i wyjście z okna godzinowego */
 loadRadar();
 setInterval(loadRadar, CONFIG.radarEveryMin * 60000);
 
