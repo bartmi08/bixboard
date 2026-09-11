@@ -1006,7 +1006,7 @@ function renderFeed(f) {
 
   h = "";
   if (f.sensors && f.sensors.length) {
-    for (i = 0; i < f.sensors.length && i < 6; i++) {
+    for (i = 0; i < f.sensors.length && i < 9; i++) {
       h += '<div class="tile"><div class="tile-in">' +
            '<div class="tile-label">' + esc(f.sensors[i].label) + "</div>" +
            '<div class="tile-val">' + esc(f.sensors[i].value) + "</div></div></div>";
