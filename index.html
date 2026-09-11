@@ -56,8 +56,13 @@ html, body {
 .col > .card, .col > .tiles { margin-bottom: 10px; }
 .col > .card:last-child, .col > .tiles:last-child { margin-bottom: 0; }
 body.no-agenda .col-right:empty { display: none; }
-/* kalendarz wjeżdża 30% swojej wysokości wyżej, w pusty pas zdjęcia */
-.col-right { -webkit-transform: translateY(-30%); transform: translateY(-30%); }
+/* Kalendarz wjeżdża w pusty pas zdjęcia. `align-self: end` jest tu konieczne:
+   bez niego kolumna rozciąga się na wysokość wiersza siatki, więc procent liczył
+   się od WYSOKOŚCI LEWEJ KOLUMNY — doszła karta dojazdu i kalendarz wjechał na zegar. */
+.col-right {
+  -webkit-align-self: end; -ms-grid-row-align: end; align-self: end;
+  -webkit-transform: translateY(-18%); transform: translateY(-18%);
+}
 
 /* wspólny wygląd karty — mocno przezroczysty, rogi prawie proste */
 .card {
