@@ -62,7 +62,9 @@ body.no-agenda .col-right:empty { display: none; }
    się od WYSOKOŚCI LEWEJ KOLUMNY — doszła karta dojazdu i kalendarz wjechał na zegar. */
 .col-right {
   -webkit-align-self: end; -ms-grid-row-align: end; align-self: end;
-  -webkit-transform: translateY(-18%); transform: translateY(-18%);
+  /* Stała wartość, nie procent: kolumna rośnie z każdą kartą (agenda, miesiąc,
+     samoloty), a procent rósł razem z nią i wpychał kalendarz pod zegar. */
+  -webkit-transform: translateY(-40px); transform: translateY(-40px);
 }
 
 /* wspólny wygląd karty — mocno przezroczysty, rogi prawie proste */
@@ -79,7 +81,7 @@ body.no-agenda .col-right:empty { display: none; }
 /* pogoda */
 .wx-row { font-size: 0; line-height: 1; margin-top: 2px; }
 .wx-temp { font-size: 43px; font-weight: 200; letter-spacing: -1px; display: inline-block; vertical-align: middle; }
-.wx-ico { font-size: 33px; display: inline-block; vertical-align: middle; margin-left: 9px; }
+.wx-ico { font-size: 46px; display: inline-block; vertical-align: middle; margin-left: 9px; }
 .wx-desc { font-size: 16px; color: #f0f3fa; margin-top: 1px; }
 .wx-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 /* wschód i zachód słońca — jedna linijka pod pogodą */
@@ -126,6 +128,32 @@ body.no-commute .commute { display: none; }
 .mc-c.has .mc-n { background: rgba(232,151,122,0.62); color: #fff4ee; font-weight: 700; }
 .mc-c.rec .mc-n { background: rgba(246,209,92,0.72); color: #2b2410; font-weight: 700; }
 .mc-c.today .mc-n { background: #e8977a; color: #16192b; font-weight: 700; }
+
+/* samoloty nad domem — kafelek jak kalendarz: 65% kolumny, na jej środku */
+body.no-flights .flights { display: none; }
+.flights { width: 65%; margin-left: auto; margin-right: auto; }
+.fl-box {
+  position: relative; width: 100%; height: 132px; overflow: hidden;
+  border-radius: 4px; background: #0d1220;
+}
+.fl-t { position: absolute; width: 256px; height: 256px; }
+/* Samolot to trójkąt z obramowań — emoji ✈ w każdej czcionce leci pod innym kątem,
+   a trójkąt przy kursie 0 zawsze patrzy na północ. */
+.fl-p {
+  position: absolute; width: 0; height: 0; margin: -7px 0 0 -5px;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-bottom: 13px solid #ffd66b;
+  -webkit-transform-origin: 50% 70%; transform-origin: 50% 70%;
+}
+.fl-p.near { border-bottom-color: #ffffff; }   /* ten, o którym mówi podpis */
+.fl-dot {
+  position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -5px 0 0 -5px;
+  border-radius: 50%; background: #e8977a;
+  -webkit-box-shadow: 0 0 0 2px rgba(0,0,0,0.6); box-shadow: 0 0 0 2px rgba(0,0,0,0.6);
+}
+.fl-txt { font-size: 11px; color: #f0f3fa; margin-top: 6px; line-height: 1.3; }
+.fl-txt b { color: #e8977a; font-weight: 600; }
+.fl-sub { font-size: 10px; color: #8f9ab2; margin-top: 2px; }
 
 /* angielski — kafelek tylko w oknach porannym i wieczornym */
 body.no-english .english { display: none; }
@@ -300,7 +328,7 @@ body.modal-on #modal { display: block; }
 #stale { position: absolute; top: 9px; right: 11px; font-size: 9px; letter-spacing: 1px; color: #a7b2c8; display: none; }
 </style>
 </head>
-<body class="no-agenda no-sensors no-commute no-weekend no-onnow">
+<body class="no-agenda no-sensors no-commute no-weekend no-onnow no-flights">
 
 <div id="bg"></div>
 <div id="shade"></div>
@@ -381,6 +409,13 @@ body.modal-on #modal { display: block; }
         <div class="mc mc-hd"><div class="mc-c">pn</div><div class="mc-c">wt</div><div class="mc-c">śr</div><div class="mc-c">cz</div><div class="mc-c">pt</div><div class="mc-c">sb</div><div class="mc-c">nd</div></div>
         <div class="mc" id="mc-grid"></div>
       </div>
+
+      <div class="card flights" id="flights">
+        <p class="label">Nad domem</p>
+        <div class="fl-box" id="fl"><div id="fl-base"></div><div id="fl-mk"></div></div>
+        <div class="fl-txt" id="fl-txt">&nbsp;</div>
+        <div class="fl-sub" id="fl-sub">&nbsp;</div>
+      </div>
     </div>
 
     <div class="bottom" id="bottom">
@@ -452,6 +487,8 @@ var CONFIG = {
   englishHours: [[7, 10], [18, 21]],   /* kiedy pokazywać słówko dnia */
   radarEveryMin: 5,
   radarZoom: 7,       /* 7 = ~200 km w poprzek karty; 8 to już tylko okolica */
+  flightZoom: 8,      /* 8 = ~90 km w poprzek, czyli tyle, ile pobiera generator */
+  flightEverySec: 5,  /* co tyle board przelicza pozycje samolotów z kursu i prędkości */
   reloadEveryH: 1,
 
   /* przygaszanie */
@@ -839,6 +876,17 @@ function renderFeed(f) {
     setFlag("no-onnow", true);
   }
 
+  if (f.flights && f.flights.items && f.flights.items.length) {
+    flights = f.flights.items;
+    flightHome = f.flights.home || null;
+    setFlag("no-flights", false);
+    flightBaseDrawn = false;                       /* dom mógł się zmienić — kafle od nowa */
+    renderFlights();
+  } else {
+    flights = [];
+    setFlag("no-flights", true);
+  }
+
   if (f.recipes && f.recipes.length) {
     var sameFirst = recipes.length && recipes[0].name === f.recipes[0].name;
     recipes = f.recipes;
@@ -958,6 +1006,87 @@ function drawRadar(host, path) {
     }
   }
   box.innerHTML = html + '<div class="rd-dot"></div>';
+}
+
+/* ---------- samoloty nad domem ----------
+   Feed FR24 ma CORS zamknięty na własną domenę, więc pozycje przychodzą z generatora
+   i w najgorszym razie są sprzed jednego przebiegu (3 min) — a odrzutowiec robi w tym
+   czasie 40 km. Dlatego feed niesie też kurs, prędkość i znacznik czasu, a board co
+   kilka sekund dolicza, gdzie samolot powinien być teraz. */
+var flights = [], flightHome = null, flightBaseDrawn = false;
+
+function flPos(p) {
+  var dt = (Date.now() / 1000) - (p.ts || 0);
+  if (dt < 0) { dt = 0; }
+  if (dt > 900) { dt = 900; }                    /* stara pozycja — dalej nie zgadujemy */
+  var m = (p.spd || 0) * 0.5144 * dt;            /* węzły -> m/s -> metry */
+  var r = (p.trk || 0) * Math.PI / 180;
+  return [p.lat + (m * Math.cos(r)) / 111320,
+          p.lon + (m * Math.sin(r)) / (111320 * Math.cos(p.lat * Math.PI / 180))];
+}
+
+function flKm(la, lo) {
+  var h = flightHome || [CONFIG.lat, CONFIG.lon];
+  var x = (lo - h[1]) * Math.PI / 180 * Math.cos((la + h[0]) / 2 * Math.PI / 180);
+  var y = (la - h[0]) * Math.PI / 180;
+  return 6371 * Math.sqrt(x * x + y * y);
+}
+
+function drawFlightBase() {
+  var box = $("fl"), w = box.offsetWidth, h = box.offsetHeight;
+  if (!w || !h) { return; }
+  var z = CONFIG.flightZoom, n = Math.pow(2, z), hm = flightHome || [CONFIG.lat, CONFIG.lon];
+  var left = lonToPx(hm[1], z) - w / 2, top = latToPx(hm[0], z) - h / 2;
+  var html = "", ty, tx;
+  for (ty = Math.floor(top / 256); ty <= Math.floor((top + h) / 256); ty++) {
+    if (ty < 0 || ty >= n) { continue; }
+    for (tx = Math.floor(left / 256); tx <= Math.floor((left + w) / 256); tx++) {
+      var wx = ((tx % n) + n) % n;
+      var st = ' style="left:' + (tx * 256 - left) + 'px;top:' + (ty * 256 - top) + 'px"';
+      html += '<img class="fl-t"' + st + ' onerror="this.style.display=\'none\'" src="' +
+              ESRI + 'Base/MapServer/tile/' + z + '/' + ty + '/' + wx + '">';
+    }
+  }
+  for (ty = Math.floor(top / 256); ty <= Math.floor((top + h) / 256); ty++) {
+    if (ty < 0 || ty >= n) { continue; }
+    for (tx = Math.floor(left / 256); tx <= Math.floor((left + w) / 256); tx++) {
+      var lwx = ((tx % n) + n) % n;
+      html += '<img class="fl-t" style="left:' + (tx * 256 - left) + 'px;top:' +
+              (ty * 256 - top) + 'px" onerror="this.style.display=\'none\'" src="' +
+              ESRI + 'Reference/MapServer/tile/' + z + '/' + ty + '/' + lwx + '">';
+    }
+  }
+  $("fl-base").innerHTML = html;
+  flightBaseDrawn = true;
+}
+
+function renderFlights() {
+  if (!flights.length) { return; }
+  var box = $("fl"), w = box.offsetWidth, h = box.offsetHeight;
+  if (!w || !h) { return; }                        /* karta schowana — kafle nie mają wymiarów */
+  if (!flightBaseDrawn) { drawFlightBase(); }
+  var z = CONFIG.flightZoom, hm = flightHome || [CONFIG.lat, CONFIG.lon];
+  var left = lonToPx(hm[1], z) - w / 2, top = latToPx(hm[0], z) - h / 2;
+  var html = "", best = null, bestKm = 1e9, i;
+  for (i = 0; i < flights.length; i++) {
+    var p = flights[i], pos = flPos(p), km = flKm(pos[0], pos[1]);
+    if (km < bestKm) { bestKm = km; best = p; }
+    var x = Math.round(lonToPx(pos[1], z) - left), y = Math.round(latToPx(pos[0], z) - top);
+    if (x < -12 || y < -12 || x > w + 12 || y > h + 12) { continue; }
+    var rot = "rotate(" + (p.trk || 0) + "deg)";
+    html += '<div class="fl-p' + (km < 8 ? " near" : "") + '" style="left:' + x + 'px;top:' + y +
+            'px;-webkit-transform:' + rot + ';transform:' + rot + '"></div>';
+  }
+  $("fl-mk").innerHTML = html + '<div class="fl-dot"></div>';
+
+  if (best) {
+    var route = (best.from && best.to) ? (esc(best.from) + " &rarr; " + esc(best.to)) : "";
+    $("fl-txt").innerHTML = "<b>" + esc(best.call || "?") + "</b>" + (route ? " &middot; " + route : "");
+    var m = Math.round(best.alt * 0.3048 / 100) * 100;
+    $("fl-sub").textContent = Math.round(bestKm) + " km stąd · " +
+                              String(m).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " m" +
+                              (best.type ? " · " + best.type : "");
+  }
 }
 
 var radarLast = null;
@@ -1128,6 +1257,7 @@ setInterval(renderMonth, 600000);    /* po północy siatka musi przeskoczyć na
 setInterval(renderEnglish, 60000);   /* wejście i wyjście z okna godzinowego */
 loadRadar();
 setInterval(loadRadar, CONFIG.radarEveryMin * 60000);
+setInterval(renderFlights, CONFIG.flightEverySec * 1000);
 
 setTimeout(function () { if (!recipes.length) { loadRecipeFallback(false); } }, 4000);
 
