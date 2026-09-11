@@ -95,23 +95,21 @@ body.no-commute .commute { display: none; }
 .cm-unit { font-size: 13px; color: #c8d1e2; display: inline-block; vertical-align: middle; margin-left: 4px; }
 .cm-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 
-/* siatka miesiąca */
+/* siatka miesiąca — dni z wydarzeniami dostają wypełnione kółko, nie kropkę pod spodem */
+.month { padding: 7px 9px 8px 9px; }
 .mc { font-size: 0; }
 .mc-c {
   display: inline-block; width: 14.285%; text-align: center;
-  font-size: 12px; padding: 3px 0 5px 0; position: relative; color: #eef1f8;
+  font-size: 11px; padding: 1px 0; color: #eef1f8;
 }
-.mc-hd .mc-c { font-size: 9px; letter-spacing: 1px; color: #8f9ab2; padding: 0 0 3px 0; }
+.mc-hd .mc-c { font-size: 8px; letter-spacing: 1px; color: #8f9ab2; padding: 0 0 2px 0; }
 .mc-c.out { color: #59627a; }
-.mc-c.today b {
-  display: inline-block; width: 21px; height: 21px; line-height: 21px;
-  border-radius: 50%; background: #e8977a; color: #16192b; font-weight: 600;
-  margin: -3px 0;
+.mc-n {
+  display: inline-block; width: 17px; height: 17px; line-height: 17px;
+  border-radius: 50%; vertical-align: middle;
 }
-.mc-dot {
-  position: absolute; left: 50%; bottom: 1px; width: 3px; height: 3px;
-  margin-left: -2px; border-radius: 50%; background: #6ea8ff;
-}
+.mc-c.has .mc-n { background: rgba(232,151,122,0.42); color: #fff1ea; font-weight: 600; }
+.mc-c.today .mc-n { background: #e8977a; color: #16192b; font-weight: 700; }
 
 /* angielski — kafelek tylko w oknach porannym i wieczornym */
 body.no-english .english { display: none; }
@@ -897,7 +895,7 @@ function loadRadar() {
 
 /* ---------- siatka miesiąca ----------
    Rysowana lokalnie z zegara — feed dokłada tylko `agenda_dates`, czyli dni,
-   pod którymi ma się pojawić kropka. Tydzień zaczyna się w poniedziałek. */
+   które mają dostać podświetlone kółko. Tydzień zaczyna się w poniedziałek. */
 var MIESIACE_M = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec",
                   "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
 var agendaDates = {};
@@ -917,10 +915,10 @@ function renderMonth() {
     var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     if (i >= 35 && d.getMonth() !== m) { break; }    /* szósty rząd tylko gdy potrzebny */
     var key = iso(d);
-    var cls = "mc-c" + (d.getMonth() !== m ? " out" : "") + (key === today ? " today" : "");
-    var txt = (key === today) ? "<b>" + d.getDate() + "</b>" : d.getDate();
-    html += '<div class="' + cls + '">' + txt +
-            (agendaDates[key] && d.getMonth() === m ? '<div class="mc-dot"></div>' : "") + '</div>';
+    var inMonth = (d.getMonth() === m);
+    var cls = "mc-c" + (inMonth ? "" : " out") +
+              (key === today ? " today" : (agendaDates[key] && inMonth ? " has" : ""));
+    html += '<div class="' + cls + '"><span class="mc-n">' + d.getDate() + '</span></div>';
   }
   $("mc-grid").innerHTML = html;
 }
