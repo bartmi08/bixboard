@@ -125,7 +125,7 @@ body.no-commute .commute { display: none; }
 .mc { font-size: 0; }
 .mc-c {
   display: inline-block; width: 14.285%; text-align: center;
-  font-size: 11px; padding: 0; color: #eef1f8;
+  font-size: 11px; padding: 1px 0; color: #eef1f8;
 }
 .mc-hd .mc-c { font-size: 8px; letter-spacing: 1px; color: #8f9ab2; padding: 0 0 2px 0; }
 .mc-c.out { color: #59627a; }
@@ -150,19 +150,12 @@ body.no-player .player { display: none; }
 .pl-m { font-size: 10px; color: #8f9ab2; margin-top: 2px; }
 .pl-m b { color: #e8977a; font-weight: 600; }
 .pl-eq { display: inline-block; margin-right: 5px; color: #7fd4a0; }
-/* Pasek stacji z kolejki — jak preselekcja w radiu. Grająca świeci, reszta przygaszona. */
-.pl-q { font-size: 0; margin-top: 5px; clear: both; }
-.pl-i {
-  display: inline-block; width: 22px; height: 22px; margin-right: 5px; border-radius: 4px;
-  background-size: cover; background-position: center; opacity: 0.38;
-}
-.pl-i.on { opacity: 1; -webkit-box-shadow: 0 0 0 2px #e8977a; box-shadow: 0 0 0 2px #e8977a; }
 
 /* samoloty nad domem — kafelek jak kalendarz: 65% kolumny, na jej środku */
 body.no-flights .flights { display: none; }
 .flights { width: 65%; margin-left: auto; margin-right: auto; }
 .fl-box {
-  position: relative; width: 100%; height: 66px; overflow: hidden;
+  position: relative; width: 100%; height: 88px; overflow: hidden;
   border-radius: 4px; background: #0d1220;
 }
 .fl-t { position: absolute; width: 256px; height: 256px; }
@@ -441,7 +434,6 @@ body.modal-on #modal { display: block; }
           <div class="pl-s" id="pl-s"></div>
           <div class="pl-m" id="pl-m"></div>
         </div>
-        <div class="pl-q" id="pl-q"></div>
       </div>
 
       <div class="card agenda" id="agenda-card">
@@ -944,16 +936,6 @@ function renderFeed(f) {
     if (pl.q) { meta.push(esc(pl.q)); }
     $("pl-m").innerHTML = (pl.playing ? '<span class="pl-eq">&#9654;</span>' : "") + meta.join(" &middot; ");
 
-    var qh = "", qi;
-    for (qi = 0; qi < (pl.queue || []).length; qi++) {
-      var stn = pl.queue[qi];
-      /* Grającą stację poznajemy po okładce — nazwa stacji siedzi w innym polu
-         niż to, co pokazujemy jako tytuł, więc porównanie po nazwie by nie trafiło. */
-      var on = (pl.art && stn.a === pl.art) || (pl.src && stn.n === pl.src);
-      qh += '<div class="pl-i' + (on ? " on" : "") + '" title="' + esc(stn.n) +
-            '" style="background-image:url(\'' + stn.a + '\')"></div>';
-    }
-    $("pl-q").innerHTML = qh;
     setFlag("no-player", false);
   } else {
     setFlag("no-player", true);
