@@ -40,7 +40,8 @@ html, body {
 /* --- góra: pogoda po lewej, zegar obok niej (~34% wysokości) ---
    Bez flexa: iOS 12 nie ma `gap`, a pozycjonowanie absolutne jest tu pewniejsze. */
 .top { position: relative; height: 34%; padding: 20px 0 0 0; text-shadow: 0 2px 16px rgba(0,0,0,0.5); }
-.top-wx { position: absolute; left: 0; top: 20px; width: 36%; }
+/* Ta sama szerokość co karta radaru niżej: 65% kolumny = 32% pasa pod padding .wrap. */
+.top-wx { position: absolute; left: 0; top: 20px; width: 32%; }
 .top-clock { margin-left: 38%; text-align: right; padding-right: 8px; }
 #time { font-size: 160px; line-height: 1; font-weight: 200; letter-spacing: -6px; font-variant-numeric: tabular-nums; }
 #date { font-size: 22px; font-weight: 300; margin-top: 2px; color: #f3f5fb; }
@@ -320,6 +321,7 @@ body.modal-on #modal { display: block; }
         <div class="wx-desc" id="wx-desc">wczytuję…</div>
         <div class="wx-sub" id="wx-sub">&nbsp;</div>
         <div class="wx-sun" id="wx-sun">&nbsp;</div>
+        <div class="wx-sun" id="wx-bar">&nbsp;</div>
         <div class="fc" id="fc"></div>
       </div>
     </div>
@@ -591,13 +593,37 @@ function dayLen(a, b) {
   return Math.floor(mins / 60) + " h " + (mins % 60) + " min";
 }
 
+/* Barometr czyta się z różnicy, nie z samej liczby — porównujemy godzinę bieżącą
+   z tą sprzed 3 h (stąd past_hours=6 w zapytaniu). Próg 1 hPa/3 h. */
+function pressTrend(j) {
+  var h = j.hourly;
+  if (!h || !h.time || !h.pressure_msl) { return ""; }
+  var n = new Date();
+  var key = n.getFullYear() + "-" + pad(n.getMonth() + 1) + "-" + pad(n.getDate()) +
+            "T" + pad(n.getHours()) + ":00";
+  var i = -1, k;
+  for (k = 0; k < h.time.length; k++) { if (h.time[k] === key) { i = k; break; } }
+  if (i < 3) { return ""; }
+  var d = h.pressure_msl[i] - h.pressure_msl[i - 3];
+  if (d >= 1) { return " &#8599;"; }
+  if (d <= -1) { return " &#8600;"; }
+  return " &#8594;";
+}
+
+function mmTxt(v) {
+  if (v === null || v === undefined) { return ""; }
+  var t = (v < 10) ? (Math.round(v * 10) / 10) : Math.round(v);
+  return String(t).replace(".", ",");
+}
+
 var lastWeatherOk = 0;
 
 function loadWeather() {
   var u = "https://api.open-meteo.com/v1/forecast" +
           "?latitude=" + CONFIG.lat + "&longitude=" + CONFIG.lon +
-          "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m" +
-          "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset" +
+          "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,pressure_msl" +
+          "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum" +
+          "&hourly=pressure_msl&past_hours=6&forecast_hours=4" +
           "&minutely_15=precipitation,precipitation_probability&forecast_minutely_15=48" +
           "&timezone=Europe%2FWarsaw&forecast_days=4";
   getJSON(u, function (j) {
@@ -617,6 +643,15 @@ function loadWeather() {
                               "° · wilg. " + c.relative_humidity_2m +
                               "% · wiatr " + Math.round(c.wind_speed_10m) + " km/h";
     var d = j.daily, html = "", i;
+    var bar = [];
+    if (c.pressure_msl !== undefined && c.pressure_msl !== null) {
+      bar.push("ci\u015bn. " + Math.round(c.pressure_msl) + " hPa" + pressTrend(j));
+    }
+    if (d && d.precipitation_sum && mmTxt(d.precipitation_sum[0]) !== "") {
+      bar.push("opady dzi\u015b " + mmTxt(d.precipitation_sum[0]) + " mm");
+    }
+    $("wx-bar").innerHTML = bar.join(" &middot; ");
+
     /* wschód/zachód — Open-Meteo oddaje je jako "2026-09-11T06:24" w strefie z zapytania */
     if (d && d.sunrise && d.sunset) {
       $("wx-sun").innerHTML = "&#9788; <b>" + hhmm(d.sunrise[0]) + "</b> &middot; &#9790; <b>" +
