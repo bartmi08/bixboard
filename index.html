@@ -1104,12 +1104,17 @@ function renderFlights() {
   $("fl-mk").innerHTML = html + '<div class="fl-dot"></div>';
 
   if (best) {
+    /* Na kafelku ma stać nazwa linii — "NSZ3563" z drugiego końca kuchni nic nie mówi.
+       Kod rejsu schodzi do drugiej linijki, dla tych, których to interesuje. */
     var route = (best.from && best.to) ? (esc(best.from) + " &rarr; " + esc(best.to)) : "";
-    $("fl-txt").innerHTML = "<b>" + esc(best.call || "?") + "</b>" + (route ? " &middot; " + route : "");
+    $("fl-txt").innerHTML = "<b>" + esc(best.line || best.call || "?") + "</b>" +
+                            (route ? " &middot; " + route : "");
     var m = Math.round(best.alt * 0.3048 / 100) * 100;
-    $("fl-sub").textContent = Math.round(bestKm) + " km stąd · " +
-                              String(m).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " m" +
-                              (best.type ? " · " + best.type : "");
+    var sub = [Math.round(bestKm) + " km stąd",
+               String(m).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " m"];
+    if (best.type) { sub.push(best.type); }
+    if (best.call && best.call !== best.line) { sub.push(best.call); }
+    $("fl-sub").textContent = sub.join(" · ");
   }
 }
 
