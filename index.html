@@ -132,6 +132,10 @@ body.no-english .english { display: none; }
 
 /* radar opadów — karta pokazuje się tylko, gdy coś nadciąga */
 body.no-rain .radar { display: none; }
+/* Wąski kafelek jak kalendarz, tyle że dosunięty do LEWEJ krawędzi kolumny.
+   Mapa sama się dopasuje: drawRadar() liczy kafle z offsetWidth przy każdym rysowaniu,
+   więc wycinek zostaje wyśrodkowany na Bibicach, tylko węższy. */
+.radar { width: 65%; margin-right: auto; }
 .rn {
   height: 34px; font-size: 0; margin-top: 8px;
   border-bottom: 1px solid rgba(255,255,255,0.14);
@@ -142,9 +146,11 @@ body.no-rain .radar { display: none; }
   background: #6ea8ff; border-radius: 1px 1px 0 0;
 }
 .rn-b.now .rn-f { background: #e8977a; }
-.rn-ax { font-size: 9px; color: #8f9ab2; margin-top: 3px; }
+.rn-ax { font-size: 9px; color: #8f9ab2; margin-top: 3px; position: relative; }
 .rn-ax span { display: inline-block; width: 25%; }
-.rn-ax span.last { width: auto; float: right; }
+/* Na wąskim kafelku cztery pola po 25% zajmują całą szerokość i pływające "+4 h"
+   spadało do drugiej linijki — dlatego wisi absolutnie przy prawej krawędzi. */
+.rn-ax span.last { position: absolute; right: 0; top: 0; width: auto; float: none; }
 .rn-txt { font-size: 12px; color: #f0f3fa; margin-top: 7px; }
 
 /* radar opadów */
