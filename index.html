@@ -101,7 +101,10 @@ body.no-commute .commute { display: none; }
 .cm-sub { font-size: 10px; color: #b3bdd2; margin-top: 3px; }
 
 /* siatka miesiąca — dni z wydarzeniami dostają wypełnione kółko, nie kropkę pod spodem */
-.month { padding: 7px 9px 8px 9px; }
+.month {
+  padding: 7px 9px 8px 9px;
+  width: 65%; margin-left: auto; margin-right: auto;   /* węższy kafelek na środku kolumny */
+}
 .mc { font-size: 0; }
 .mc-c {
   display: inline-block; width: 14.285%; text-align: center;
@@ -113,7 +116,8 @@ body.no-commute .commute { display: none; }
   display: inline-block; width: 17px; height: 17px; line-height: 17px;
   border-radius: 50%; vertical-align: middle;
 }
-.mc-c.has .mc-n { background: rgba(232,151,122,0.42); color: #fff1ea; font-weight: 600; }
+.mc-c.has .mc-n { background: rgba(232,151,122,0.62); color: #fff4ee; font-weight: 700; }
+.mc-c.rec .mc-n { background: rgba(246,209,92,0.72); color: #2b2410; font-weight: 700; }
 .mc-c.today .mc-n { background: #e8977a; color: #16192b; font-weight: 700; }
 
 /* angielski — kafelek tylko w oknach porannym i wieczornym */
@@ -331,8 +335,7 @@ body.modal-on #modal { display: block; }
         <p class="label" id="cm-label">Dojazd</p>
         <div class="cm-row">
           <span class="cm-ico">&#x1F697;</span>
-          <span class="cm-min" id="cm-min">--</span>
-          <span class="cm-unit">min</span>
+          <span id="cm-val"></span>
         </div>
         <div class="cm-sub" id="cm-sub">&nbsp;</div>
       </div>
@@ -744,6 +747,9 @@ function renderFeed(f) {
   if (f.agenda_dates) {
     for (var di = 0; di < f.agenda_dates.length; di++) { agendaDates[f.agenda_dates[di]] = 1; }
   }
+  if (f.agenda_dates_rec) {
+    for (var dr = 0; dr < f.agenda_dates_rec.length; dr++) { agendaDatesRec[f.agenda_dates_rec[dr]] = 1; }
+  }
   renderMonth();
 
   englishItems = (f.english && f.english.length) ? f.english : [];
@@ -778,10 +784,10 @@ function renderFeed(f) {
     setFlag("no-weekend", true);
   }
 
-  if (f.commute && f.commute.minutes) {
+  if (f.commute && f.commute.minutes) {   /* powyżej godziny czytelniej jako 1 h 50 min */
     var cm = f.commute;
     $("cm-label").textContent = cm.label ? cm.label : "Dojazd";
-    $("cm-min").textContent = cm.minutes;
+    $("cm-val").innerHTML = commuteTime(cm.minutes);
     var sub = [];
     if (cm.to) { sub.push("do: " + cm.to); }
     if (cm.distance) { sub.push(cm.distance); }
@@ -903,10 +909,21 @@ function loadRadar() {
    które mają dostać podświetlone kółko. Tydzień zaczyna się w poniedziałek. */
 var MIESIACE_M = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec",
                   "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
-var agendaDates = {};
+var agendaDates = {}, agendaDatesRec = {};
 
 function iso(d) {
   return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+
+/* "110 min" źle się czyta z drugiego końca kuchni — od godziny w górę rozbijamy na h + min. */
+function commuteTime(min) {
+  min = Math.round(min);
+  var big = '<span class="cm-min">', unit = '<span class="cm-unit">';
+  if (min < 60) { return big + min + '</span>' + unit + 'min</span>'; }
+  var h = Math.floor(min / 60), m = min % 60;
+  var out = big + h + '</span>' + unit + 'h</span>';
+  if (m) { out += big + m + '</span>' + unit + 'min</span>'; }
+  return out;
 }
 
 function renderMonth() {
@@ -920,9 +937,11 @@ function renderMonth() {
     var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
     if (i >= 35 && d.getMonth() !== m) { break; }    /* szósty rząd tylko gdy potrzebny */
     var key = iso(d);
-    var inMonth = (d.getMonth() === m);
-    var cls = "mc-c" + (inMonth ? "" : " out") +
-              (key === today ? " today" : (agendaDates[key] && inMonth ? " has" : ""));
+    var inMonth = (d.getMonth() === m), mark = "";
+    if (key === today) { mark = " today"; }
+    else if (inMonth && agendaDatesRec[key]) { mark = " rec"; }   /* seria — na żółto */
+    else if (inMonth && agendaDates[key]) { mark = " has"; }      /* jednorazowe */
+    var cls = "mc-c" + (inMonth ? "" : " out") + mark;
     html += '<div class="' + cls + '"><span class="mc-n">' + d.getDate() + '</span></div>';
   }
   $("mc-grid").innerHTML = html;
