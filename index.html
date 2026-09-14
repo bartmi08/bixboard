@@ -884,6 +884,10 @@ function placeTiles(hasAgenda) {
 }
 
 function renderFeed(f) {
+  /* Kiedy powstał feed — potrzebne, żeby oznaczyć nieświeży czas dojazdu. */
+  var gm = /(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec((f && f.generated) || "");
+  feedTs = gm ? new Date(+gm[1], +gm[2] - 1, +gm[3], +gm[4], +gm[5], +gm[6]).getTime() : null;
+
   if (!f) {
     setFlag("no-agenda", true); setFlag("no-sensors", true);
     setFlag("no-commute", true); setFlag("no-weekend", true); setFlag("no-onnow", true);
@@ -981,7 +985,8 @@ function renderFeed(f) {
     if (cm.to) { sub.push("do: " + cm.to); }
     if (cm.distance) { sub.push(cm.distance); }
     if (cm.route) { sub.push(cm.route); }
-    $("cm-sub").textContent = sub.join(" · ");
+    cmSubBase = sub.join(" · ");
+    markStale();
     setFlag("no-commute", false);
   } else {
     setFlag("no-commute", true);
@@ -1078,6 +1083,19 @@ function drawRadar(host, path) {
    i w najgorszym razie są sprzed jednego przebiegu (3 min) — a odrzutowiec robi w tym
    czasie 40 km. Dlatego feed niesie też kurs, prędkość i znacznik czasu, a board co
    kilka sekund dolicza, gdzie samolot powinien być teraz. */
+/* Gdy generator albo sieć padną, board po cichu pokazuje ostatnie dobre dane.
+   Przy większości kart to nie szkodzi, ale nieświeży czas dojazdu wprowadza w błąd,
+   więc dopisujemy przy nim wiek danych, gdy zrobi się stary. */
+var feedTs = null, cmSubBase = "";
+
+function markStale() {
+  if (!cmSubBase) { return; }
+  var a = feedTs ? Math.floor((Date.now() - feedTs) / 60000) : null;
+  $("cm-sub").textContent = (a !== null && a >= 8)
+    ? (cmSubBase + " · dane sprzed " + a + " min")
+    : cmSubBase;
+}
+
 var flights = [], flightHome = null, flightBaseDrawn = false;
 
 /* Samolot widziany z góry, dziobem na północ (kurs 0) — kadłub, skrzydła, statecznik. */
@@ -1348,6 +1366,7 @@ setTimeout(function () { if (!recipes.length) { loadRecipeFallback(false); } }, 
 CONFIG.feedUrl = resolveFeedUrl();
 loadFeed();
 setInterval(loadFeed, CONFIG.feedEveryMin * 60000);
+setInterval(markStale, 60000);      /* wiek ma rosnąć także wtedy, gdy feed w ogóle nie wchodzi */
 
 $("recipe").addEventListener("click", function () { openModal(); }, false);
 $("onnow").addEventListener("click", function () { showOnnow(onnowIdx + 1); }, false);
