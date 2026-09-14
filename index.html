@@ -137,19 +137,6 @@ body.no-commute .commute { display: none; }
 .mc-c.rec .mc-n { background: rgba(246,209,92,0.72); color: #2b2410; font-weight: 700; }
 .mc-c.today .mc-n { background: #e8977a; color: #16192b; font-weight: 700; }
 
-/* Eversolo — co teraz gra; na górze prawej kolumny, nad kalendarzem */
-body.no-player .player { display: none; }
-.pl-art {
-  float: left; width: 44px; height: 44px; border-radius: 4px; background-size: cover;
-  background-position: center; background-color: rgba(255,255,255,0.07);
-  text-align: center; font-size: 20px; line-height: 44px;
-}
-.pl-txt { display: block; margin-left: 53px; overflow: hidden; }
-.pl-t { font-size: 14px; font-weight: 500; line-height: 1.15; }
-.pl-s { font-size: 12px; color: #b3bdd2; margin-top: 1px; }
-.pl-m { font-size: 10px; color: #8f9ab2; margin-top: 2px; }
-.pl-m b { color: #e8977a; font-weight: 600; }
-.pl-eq { display: inline-block; margin-right: 5px; color: #7fd4a0; }
 
 /* samoloty nad domem — kafelek jak kalendarz: 65% kolumny, na jej środku */
 body.no-flights .flights { display: none; }
@@ -358,7 +345,7 @@ body.modal-on #modal { display: block; }
 #stale { position: absolute; top: 9px; right: 11px; font-size: 9px; letter-spacing: 1px; color: #a7b2c8; display: none; }
 </style>
 </head>
-<body class="no-agenda no-sensors no-commute no-weekend no-onnow no-flights no-player">
+<body class="no-agenda no-sensors no-commute no-weekend no-onnow no-flights">
 
 <div id="bg"></div>
 <div id="shade"></div>
@@ -426,15 +413,6 @@ body.modal-on #modal { display: block; }
 
     <div class="col col-right" id="col-right">
 
-      <div class="card player" id="player">
-        <p class="label">Teraz gra</p>
-        <div class="pl-art" id="pl-art">&#9834;</div>
-        <div class="pl-txt">
-          <div class="pl-t" id="pl-t"></div>
-          <div class="pl-s" id="pl-s"></div>
-          <div class="pl-m" id="pl-m"></div>
-        </div>
-      </div>
 
       <div class="card agenda" id="agenda-card">
         <p class="label">Kalendarz</p>
@@ -925,25 +903,6 @@ function renderFeed(f) {
     setFlag("no-onnow", true);
   }
 
-  if (f.player && (f.player.title || f.player.sub)) {
-    var pl = f.player;
-    $("pl-art").style.backgroundImage = pl.art ? ('url("' + pl.art + '")') : "";
-    $("pl-art").innerHTML = pl.art ? "" : "&#9834;";
-    $("pl-t").textContent = pl.title || "";
-    $("pl-s").textContent = pl.sub || "";
-    var meta = [];
-    /* Pauza jest ważniejsza niż nazwa źródła — z kanapy widać, czy w ogóle gra. */
-    if (!pl.playing) { meta.push("pauza"); }
-    if (pl.src) { meta.push(esc(pl.src)); }
-    if (pl.mute) { meta.push("wyciszone"); }
-    else if (pl.vol !== undefined) { meta.push(pl.vol + "%" + (pl.db ? " · " + esc(pl.db) : "")); }
-    if (pl.q) { meta.push(esc(pl.q)); }
-    $("pl-m").innerHTML = (pl.playing ? '<span class="pl-eq">&#9654;</span>' : "") + meta.join(" &middot; ");
-
-    setFlag("no-player", false);
-  } else {
-    setFlag("no-player", true);
-  }
 
   if (f.flights && f.flights.items && f.flights.items.length) {
     flights = f.flights.items;
